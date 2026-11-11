@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>SÃO — Portal de Selección y RRHH</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Barra Superior / Navbar -->
+  <nav class="top-navbar">
+    <div class="nav-brand">
+      <div class="brand-logo">SÃO</div>
+      <span class="brand-title">Gestión de Postulantes</span>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="cambiarPantalla('pantalla-mapa')">📍 Mapa y Sucursales</button>
+      <button class="nav-btn" onclick="cambiarPantalla('pantalla-pipeline')">📋 Pipeline</button>
+      <button class="nav-btn" onclick="cambiarPantalla('pantalla-kpis')">📊 Métricas</button>
+      <button class="nav-btn" onclick="cambiarPantalla('pantalla-descartados')">⚠️ No gustaron / Historial</button>
+    </div>
+
+    <div class="nav-actions"></div>
+  </nav>
+
+  <main class="main-container">
+
+    <!-- PANTALLA 1: MAPA + LISTADO LATERAL -->
+    <section id="pantalla-mapa" class="view-screen active">
+      <aside class="sidebar-split">
+        <div class="sidebar-header">
+          <h3>Postulantes</h3>
+          <div class="header-badges">
+            <span id="sinUbicarCounter" class="counter-badge counter-warn" style="display:none;"></span>
+            <span id="mapCounter" class="counter-badge">0 candidatos</span>
+          </div>
+        </div>
+
+        <!-- Sincronización con Google Sheets -->
+        <div class="sync-box">
+          <div class="sync-row-bottom">
+            <span id="syncStatus" class="sync-status">Sin sincronizar aún</span>
+            <div class="sync-buttons">
+              <button class="btn-upload btn-mini" onclick="sincronizarAhora()">Sincronizar</button>
+              <button class="btn-upload btn-mini" onclick="recargarTodo()" title="Vuelve a bajar toda la planilla">Recargar todo</button>
+            </div>
+          </div>
+          <span id="cargaStatus" class="geocode-status" style="display:none;"></span>
+          <span id="pendStatus" class="pend-status" style="display:none;" onclick="reintentarGuardados()" title="Click para reintentar"></span>
+        </div>
+
+        <div class="sidebar-controls">
+          <input type="text" id="mapSearchInput" placeholder="Buscar nombre, puesto, estudio, dirección, teléfono...">
+
+          <div class="grid-2">
+            <select id="mapAreaFilter" title="Sector">
+              <option value="todas">Todos los sectores</option>
+              <option value="locales">Locales</option>
+              <option value="produccion">Producción</option>
+              <option value="logistica">Logística</option>
+            </select>
+            <select id="mapZonaFilter" title="Zona donde vive / se contacta">
+              <option value="todas">Todas las zonas</option>
+              <option value="mdp">Mar del Plata y Costa</option>
+              <option value="bsas">Buenos Aires (CABA y GBA)</option>
+              <option value="otra">Otras provincias</option>
+              <option value="sin">Sin zona informada</option>
+            </select>
+          </div>
+
+          <select id="mapLocalFilter" title="Postulantes que eligieron este local">
+            <option value="todos">Eligieron cualquier sucursal</option>
+          </select>
+
+          <!-- Búsqueda por cercanía -->
+          <div class="near-box">
+            <label>📏 Vecinos cercanos a un local</label>
+            <div class="grid-2">
+              <select id="mapCercaFilter">
+                <option value="ninguno">— sin filtro de distancia —</option>
+              </select>
+              <select id="mapRadioFilter" title="Radio">
+                <option value="1">1 km</option>
+                <option value="2">2 km</option>
+                <option value="3" selected>3 km</option>
+                <option value="5">5 km</option>
+                <option value="10">10 km</option>
+                <option value="20">20 km</option>
+              </select>
+            </div>
+          </div>
+
+          <details class="filters-more">
+            <summary>Más filtros (puesto, experiencia, edad...)</summary>
+            <div class="filters-grid">
+              <select id="mapPuestoFilter"><option value="todos">Cualquier puesto de interés</option></select>
+              <select id="mapExpFilter"><option value="todas">Cualquier experiencia</option></select>
+              <select id="mapEstudiaFilter">
+                <option value="todos">Estudia: indistinto</option>
+                <option value="Sí">Estudia: sí</option>
+                <option value="No">Estudia: no</option>
+              </select>
+              <select id="mapTrabajaFilter">
+                <option value="todos">Trabaja hoy: indistinto</option>
+                <option value="No">Trabaja hoy: no (disponible)</option>
+                <option value="Sí">Trabaja hoy: sí</option>
+              </select>
+              <select id="mapB1Filter">
+                <option value="todos">Licencia B1: indistinto</option>
+                <option value="Sí">Licencia B1: sí</option>
+                <option value="No">Licencia B1: no</option>
+              </select>
+              <select id="mapAntigFilter">
+                <option value="0">Postulación: cualquier fecha</option>
+                <option value="30">Últimos 30 días</option>
+                <option value="90">Últimos 3 meses</option>
+                <option value="180">Últimos 6 meses</option>
+                <option value="365">Último año</option>
+              </select>
+              <div class="grid-2">
+                <input type="number" id="mapEdadMin" placeholder="Edad mín." min="14" max="80">
+                <input type="number" id="mapEdadMax" placeholder="Edad máx." min="14" max="80">
+              </div>
+              <select id="mapUbicFilter">
+                <option value="todos">Ubicación: todos</option>
+                <option value="con">Solo ubicados en el mapa</option>
+                <option value="sin">Solo sin ubicar</option>
+              </select>
+            </div>
+          </details>
+
+          <div class="quick-status-chips">
+            <button class="chip active" data-status="activos" title="Pendientes, recomendados y en entrevista">Activos</button>
+            <button class="chip" data-status="Recomendado">⭐ Recomendados</button>
+            <button class="chip" data-status="Pendiente">Pendientes</button>
+            <button class="chip" data-status="Entrevista">En proceso</button>
+            <button class="chip" data-status="todos">Todos</button>
+            <button class="chip chip-reset" id="btnResetFiltros" title="Limpiar todos los filtros">✕ Limpiar</button>
+          </div>
+        </div>
+
+        <div id="mapCvList" class="cards-scroll"></div>
+      </aside>
+
+      <div class="map-wrapper">
+        <div id="leafletMap"></div>
+      </div>
+    </section>
+
+    <!-- PANTALLA 2: PIPELINE KANBAN -->
+    <section id="pantalla-pipeline" class="view-screen">
+      <div class="pipeline-header">
+        <h2>Pipeline General de Selección</h2>
+        <div class="pipeline-filters">
+          <input type="text" id="pipelineSearch" placeholder="Filtrar postulantes...">
+          <select id="pipelineArea">
+            <option value="todas">Todos los sectores</option>
+            <option value="locales">Locales</option>
+            <option value="produccion">Producción</option>
+            <option value="logistica">Logística</option>
+          </select>
+          <select id="pipelineLocal">
+            <option value="todos">Todas las sucursales</option>
+          </select>
+        </div>
+      </div>
+      <p class="pipeline-hint">Se muestran los 100 más recientes de cada columna. Usá los filtros para acotar. Arrastrá una tarjeta para cambiarle el estado.</p>
+
+      <div class="kanban-board">
+        <div class="kanban-col">
+          <div class="col-title col-pendiente"><span>Pendientes</span><span class="col-count" id="count-Pendiente">0</span></div>
+          <div class="col-items" id="col-items-Pendiente"></div>
+        </div>
+        <div class="kanban-col">
+          <div class="col-title col-recomendado"><span>⭐ Recomendados</span><span class="col-count" id="count-Recomendado">0</span></div>
+          <div class="col-items" id="col-items-Recomendado"></div>
+        </div>
+        <div class="kanban-col">
+          <div class="col-title col-entrevista"><span>En Entrevista</span><span class="col-count" id="count-Entrevista">0</span></div>
+          <div class="col-items" id="col-items-Entrevista"></div>
+        </div>
+        <div class="kanban-col">
+          <div class="col-title col-contratado"><span>✅ Contratados</span><span class="col-count" id="count-Contratado">0</span></div>
+          <div class="col-items" id="col-items-Contratado"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANTALLA 3: DASHBOARD KPIS -->
+    <section id="pantalla-kpis" class="view-screen">
+      <div class="dashboard-content">
+        <h2>Métricas de Reclutamiento SÃO</h2>
+        <div class="kpi-grid">
+          <div class="kpi-card"><h4>Personas únicas (sin duplicados)</h4><span class="kpi-val" id="kpiTotal">0</span></div>
+          <div class="kpi-card"><h4>Postulaciones recibidas (filas)</h4><span class="kpi-val" id="kpiPostulaciones">0</span></div>
+          <div class="kpi-card highlight-red"><h4>Personas con más de una carga</h4><span class="kpi-val" id="kpiDuplicados">0</span></div>
+          <div class="kpi-card"><h4>Nuevos últimos 7 días</h4><span class="kpi-val" id="kpiNuevos7">0</span></div>
+          <div class="kpi-card"><h4>Nuevos últimos 30 días</h4><span class="kpi-val" id="kpiNuevos30">0</span></div>
+          <div class="kpi-card"><h4>Activos sin ubicar en el mapa</h4><span class="kpi-val" id="kpiSinUbicar">0</span></div>
+          <div class="kpi-card"><h4>Pendientes</h4><span class="kpi-val" id="kpiPendientes">0</span></div>
+          <div class="kpi-card highlight-gold"><h4>⭐ Recomendados</h4><span class="kpi-val" id="kpiRecomendados">0</span></div>
+          <div class="kpi-card highlight-blue"><h4>En entrevista</h4><span class="kpi-val" id="kpiEntrevistas">0</span></div>
+          <div class="kpi-card highlight-green"><h4>Contratados</h4><span class="kpi-val" id="kpiContratados">0</span></div>
+          <div class="kpi-card highlight-orange"><h4>Entrevistados (no gustó)</h4><span class="kpi-val" id="kpiNoGustaron">0</span></div>
+          <div class="kpi-card highlight-red"><h4>Rechazados sin entrevista</h4><span class="kpi-val" id="kpiRechazados">0</span></div>
+        </div>
+
+        <div class="kpi-tables">
+          <div class="table-container">
+            <div class="table-header"><h3>Por sector</h3></div>
+            <table class="styled-table">
+              <thead><tr><th>Sector</th><th>Personas</th><th>Activos</th><th>Recomendados</th><th>En entrevista</th><th>Contratados</th></tr></thead>
+              <tbody id="kpiSectoresBody"></tbody>
+            </table>
+          </div>
+          <div class="table-container">
+            <div class="table-header"><h3>Locales más elegidos (postulantes activos)</h3></div>
+            <table class="styled-table">
+              <thead><tr><th>Local</th><th>Postulantes activos</th></tr></thead>
+              <tbody id="kpiLocalesBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANTALLA 4: HISTORIAL DE DESCARTADOS -->
+    <section id="pantalla-descartados" class="view-screen">
+      <div class="table-container">
+        <div class="table-header">
+          <h2>Historial de Entrevistados (No gustó / Descartados)</h2>
+          <p>Registro de perfiles evaluados con motivo interno para evitar rellamados ante nuevas postulaciones.</p>
+          <input type="text" id="descSearch" placeholder="Buscar por nombre, teléfono o motivo..." style="margin-top:10px; max-width:380px;">
+        </div>
+        <table class="styled-table">
+          <thead>
+            <tr>
+              <th>Candidato</th>
+              <th>Contacto</th>
+              <th>Sector solicitado</th>
+              <th>Motivo / Feedback</th>
+              <th>Última postulación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaDescartadosBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+
+  <!-- MODAL DETALLE DE CANDIDATO -->
+  <div id="candidateModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalNombre">Nombre Candidato</h2>
+          <span id="modalArea" class="badge">Sector</span>
+          <span id="modalRepetido" class="badge badge-repetido" style="display:none;">Reincidente</span>
+        </div>
+        <button class="btn-close" onclick="cerrarModal()">&times;</button>
+      </div>
+
+      <div class="modal-scroll">
+        <div class="modal-body">
+          <div class="modal-col">
+            <p><strong>📍 Domicilio:</strong> <span id="modalDir">-</span></p>
+            <p id="modalDistRow" style="display:none;"><strong>📏 Distancia:</strong> <span id="modalDist">-</span></p>
+            <p><strong>📞 Teléfono:</strong> <span id="modalTel">-</span></p>
+            <p><strong>✉️ Correo:</strong> <span id="modalEmail">-</span></p>
+            <p><strong>🎂 Edad:</strong> <span id="modalNac">-</span></p>
+            <p><strong>🏪 Locales elegidos:</strong> <span id="modalLocal">-</span></p>
+            <p><strong>🎯 Puesto de interés:</strong> <span id="modalPuesto">-</span></p>
+          </div>
+          <div class="modal-col">
+            <p><strong>🎓 Estudios:</strong> <span id="modalEstudios">-</span></p>
+            <p><strong>💼 Trabajo actual:</strong> <span id="modalTrabajo">-</span></p>
+            <p><strong>⭐ Experiencia previa:</strong> <span id="modalExp">-</span></p>
+            <p id="modalB1Row" style="display:none;"><strong>🚚 Licencia B1:</strong> <span id="modalB1">-</span></p>
+            <p><strong>📄 CV:</strong> <span id="modalCvLinks">-</span></p>
+            <div class="modal-note-box">
+              <label><strong>Nota interna de Selección:</strong></label>
+              <textarea id="modalNota" rows="3" placeholder="Ingresar detalles de la entrevista o motivos de descarte..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-raw-section">
+          <button type="button" class="raw-toggle" onclick="togglePostulaciones()">
+            📋 Historial de postulaciones <span id="rawToggleIcon">▾</span>
+          </button>
+          <div id="modalPostulaciones" class="raw-list" style="display:none;"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="state-changer">
+          <label>Estado:</label>
+          <select id="modalStateSelect">
+            <option value="Pendiente">Pendiente</option>
+            <option value="Recomendado">⭐ Recomendado</option>
+            <option value="Entrevista">En Entrevista</option>
+            <option value="NoGusto">Entrevistado (No gustó)</option>
+            <option value="Contratado">✅ Contratado</option>
+            <option value="Rechazado">Rechazado</option>
+          </select>
+        </div>
+        <div class="modal-buttons">
+          <button class="btn-upload" id="modalVerMapa" type="button">🗺️ Ver en mapa</button>
+          <button class="btn-save" onclick="guardarCambiosModal()">Guardar</button>
+          <a id="modalWaBtn" href="#" target="_blank" rel="noopener" class="btn-wa">📱 WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js"></script>
+</body>
+</html>
