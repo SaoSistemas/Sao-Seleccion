@@ -396,3 +396,5 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-gold); }
   .kpi-tables { grid-template-columns: 1fr; }
   .table-container { overflow-x: auto; }
 }
+
+input[type="date"] { color-scheme: dark; }
