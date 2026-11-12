@@ -166,9 +166,17 @@ async function intentarLogin(claveIngresada) {
 
   tokenActual = cleanKey;
   try {
+    // 1. Validamos la clave con una consulta rápida
     await apiGet("estados");
+    
+    // 2. Guardamos la clave y ocultamos el bloqueo INMEDIATAMENTE
     localStorage.setItem(TOKEN_STORAGE_KEY, tokenActual);
-    $("loginOverlay").style.display = "none";
+    const overlay = $("loginOverlay");
+    if (overlay) {
+      overlay.style.setProperty("display", "none", "important");
+    }
+    
+    // 3. Ahora sí descargamos la planilla viendo el progreso en pantalla
     iniciarAppAutenticada();
   } catch (e) {
     tokenActual = "";
