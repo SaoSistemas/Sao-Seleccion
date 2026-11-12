@@ -12,6 +12,18 @@
 </head>
 <body>
 
+  <!-- PANTALLA DE ACCESO / CLAVE -->
+  <div id="loginOverlay" style="position:fixed; inset:0; background:#121212; z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#1e1e1e; border:1px solid #333; border-radius:8px; padding:28px; width:100%; max-width:380px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.8);">
+      <div style="background:#000; color:#d4a373; border:2px solid #d4a373; font-weight:800; font-size:14px; padding:6px 12px; border-radius:6px; display:inline-block; margin-bottom:14px;">SÃO</div>
+      <h2 style="font-size:1.15rem; margin-bottom:8px; color:#f5f5f5;">Acceso al Portal RRHH</h2>
+      <p style="font-size:0.82rem; color:#9e9e9e; margin-bottom:18px;">Ingresá la clave de autorización para cargar los postulantes.</p>
+      <input type="password" id="loginTokenInput" placeholder="Clave de acceso..." style="margin-bottom:12px; text-align:center;">
+      <p id="loginErrorMsg" style="color:#e74c3c; font-size:0.78rem; margin-bottom:12px; display:none;">Clave incorrecta o sin autorización.</p>
+      <button id="btnLoginEntrar" class="btn-save" style="width:100%; padding:10px;">Ingresar</button>
+    </div>
+  </div>
+
   <!-- Barra Superior / Navbar -->
   <nav class="top-navbar">
     <div class="nav-brand">
@@ -26,14 +38,17 @@
       <button class="nav-btn" onclick="cambiarPantalla('pantalla-descartados')">⚠️ No gustaron / Historial</button>
     </div>
 
-    <div class="nav-actions"></div>
+    <div class="nav-actions">
+      <button class="btn-nuevo" onclick="abrirModalNuevo()" title="Cargar referido o postulante a mano">+ Nuevo postulante</button>
+      <button class="btn-upload btn-mini" onclick="cerrarSesion()" title="Borrar clave guardada en este navegador">🔒 Salir</button>
+    </div>
   </nav>
 
   <main class="main-container">
 
     <!-- PANTALLA 1: MAPA + LISTADO LATERAL -->
     <section id="pantalla-mapa" class="view-screen active">
-      <aside class="sidebar-split">
+      <aside class="sidebar-split" id="sidebarSplit">
         <div class="sidebar-header">
           <h3>Postulantes</h3>
           <div class="header-badges">
@@ -55,9 +70,17 @@
           <span id="pendStatus" class="pend-status" style="display:none;" onclick="reintentarGuardados()" title="Click para reintentar"></span>
         </div>
 
-        <div class="sidebar-controls">
-          <input type="text" id="mapSearchInput" placeholder="Buscar nombre, puesto, estudio, dirección, teléfono...">
+        <!-- Barra rápida siempre visible: Buscador + Colapsar Filtros + Limpiar -->
+        <div class="filter-bar-header">
+          <input type="text" id="mapSearchInput" placeholder="Buscar nombre, puesto, dirección, tel...">
+          <div class="filter-bar-actions">
+            <button type="button" class="btn-toggle-filters" id="btnToggleFiltros" onclick="togglePanelFiltros()">▲ Ocultar filtros</button>
+            <button type="button" class="btn-reset-prominent" id="btnResetFiltros" title="Restablecer todos los filtros">✕ Limpiar filtros</button>
+          </div>
+        </div>
 
+        <!-- Panel colapsable de filtros -->
+        <div class="sidebar-controls" id="panelFiltrosColapsable">
           <div class="grid-2">
             <select id="mapAreaFilter" title="Sector">
               <option value="todas">Todos los sectores</option>
@@ -141,11 +164,13 @@
             <button class="chip" data-status="Pendiente">Pendientes</button>
             <button class="chip" data-status="Entrevista">En proceso</button>
             <button class="chip" data-status="todos">Todos</button>
-            <button class="chip chip-reset" id="btnResetFiltros" title="Limpiar todos los filtros">✕ Limpiar</button>
           </div>
         </div>
 
         <div id="mapCvList" class="cards-scroll"></div>
+
+        <!-- Tirador para agrandar o achicar ancho del panel -->
+        <div class="sidebar-resizer" id="sidebarResizer" title="Arrastrar para cambiar el ancho del panel"></div>
       </aside>
 
       <div class="map-wrapper">
@@ -257,6 +282,75 @@
   </main>
 
   <div id="toast" class="toast" style="display:none;"></div>
+
+  <!-- MODAL NUEVO POSTULANTE MANUAL (REFERIDO) -->
+  <div id="nuevoModal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>Cargar Postulante Manual / Referido</h2>
+          <span class="badge badge-Recomendado">Carga directa RRHH</span>
+        </div>
+        <button class="btn-close" onclick="cerrarModalNuevo()">&times;</button>
+      </div>
+
+      <div class="modal-scroll">
+        <form id="formNuevoPostulante" class="modal-body" onsubmit="guardarNuevoPostulante(event)">
+          <div class="modal-col">
+            <label class="form-lbl">Nombre completo *</label>
+            <input type="text" id="newNombre" required placeholder="Ej: Juan Pérez">
+
+            <label class="form-lbl">Teléfono (WhatsApp) *</label>
+            <input type="text" id="newTel" required placeholder="Ej: 2235123456">
+
+            <label class="form-lbl">Correo electrónico</label>
+            <input type="email" id="newEmail" placeholder="Opcional">
+
+            <label class="form-lbl">Domicilio (Calle y altura en MDP) *</label>
+            <input type="text" id="newDir" required placeholder="Ej: Av. Colón 2500">
+
+            <label class="form-lbl">Fecha de nacimiento</label>
+            <input type="date" id="newNac">
+          </div>
+
+          <div class="modal-col">
+            <label class="form-lbl">Sector *</label>
+            <select id="newSector">
+              <option value="Locales">Locales</option>
+              <option value="Producción">Producción</option>
+              <option value="Logística">Logística</option>
+            </select>
+
+            <label class="form-lbl">Puesto de interés</label>
+            <input type="text" id="newPuesto" placeholder="Ej: Cafetería / Cajero / Referido">
+
+            <label class="form-lbl">Sucursal de preferencia</label>
+            <select id="newLocal">
+              <option value="Cualquiera">Cualquiera</option>
+            </select>
+
+            <label class="form-lbl">Estado inicial</label>
+            <select id="newEstado">
+              <option value="Recomendado" selected>⭐ Recomendado (Referido)</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Entrevista">En Entrevista</option>
+            </select>
+
+            <label class="form-lbl">Nota / Quién lo refiere</label>
+            <textarea id="newNota" rows="2" placeholder="Ej: Referido por encargado de Alem, tiene experiencia..."></textarea>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <span style="font-size:0.75rem; color:var(--text-dim);">* Campos obligatorios para ubicar en mapa</span>
+        <div class="modal-buttons">
+          <button type="button" class="btn-upload" onclick="cerrarModalNuevo()">Cancelar</button>
+          <button type="submit" form="formNuevoPostulante" class="btn-save" id="btnGuardarNuevo">Guardar postulante</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL DETALLE DE CANDIDATO -->
   <div id="candidateModal" class="modal-backdrop" style="display: none;">

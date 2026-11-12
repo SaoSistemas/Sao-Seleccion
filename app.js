@@ -1,26 +1,27 @@
 // =====================================================================================
-// SÃO — Portal de Selección y RRHH (app.js)  ·  v5.1 (Exclusivo MDP y Costa Atlántica)
+// SÃO — Portal de Selección y RRHH (app.js)  ·  v5.3 (MDP + Carga Manual + Resize)
 // =====================================================================================
 
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwOnSQu8YbKKaNJodfFiL6pyH_NTPH6OMzWjWHgDN2kgj2WLJ8NAmZYR9Kk7F37oY4ZUA/exec?token=Sao-rrhh-operaciones-postulaciones";
+const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbyJImmL7EyVuQ8k9x736rsRrlEriya7-8WsqJznHA3BHx_OYFaoPRYM99h9NVthVKD11g/exec";
+const TOKEN_STORAGE_KEY = "sao_auth_token_v1";
+let tokenActual = "";
+
 const AUTOSYNC_INTERVALO_MS = 30 * 1000;
-const CHUNK = 1500;          // filas que se bajan por tanda
-const MAX_CARDS = 100;       // tarjetas visibles por lista / columna
+const CHUNK = 1500;
+const MAX_CARDS = 100;
 const PEND_KEY = "sao_pend_v1";
-const GEO_DELAY_MS = 1100;   // OpenStreetMap pide como máximo 1 consulta por segundo
+const GEO_DELAY_MS = 1100;
 
 const ESTADOS_ACTIVOS = ["Pendiente", "Recomendado", "Entrevista"];
 const NOMBRE_ESTADO = { Pendiente: "Pendiente", Recomendado: "Recomendado", Entrevista: "Entrevista", NoGusto: "No gustó", Contratado: "Contratado", Rechazado: "Rechazado" };
 const COLOR_ESTADO = { Pendiente: "#7f8c8d", Recomendado: "#f1c40f", Entrevista: "#3498db", NoGusto: "#e67e22", Contratado: "#2ecc71", Rechazado: "#e74c3c" };
 const SECTORES = { locales: "Locales", produccion: "Producción", logistica: "Logística" };
 
-// Recuadros [sur, oeste, norte, este] para acotar las búsquedas geográficas.
 const BBOX = {
   mdp:   [-38.28, -57.90, -37.80, -57.40],
   costa: [-38.45, -58.10, -36.80, -56.60]
 };
 
-// Coordenadas verificadas con Google (hoja Locales_v1). "pat" = cómo aparece el local en la respuesta del formulario.
 const LOCALES_SAO = [
   { id: "pinamar", nombre: "Pinamar", zona: "mdp", direccion: "Av. Arq. Jorge Bunge 1055, Pinamar", lat: -37.1121868, lng: -56.8662241, pat: /pinamar/ },
   { id: "chapadmalal", nombre: "Chapadmalal", zona: "mdp", direccion: "Chapadmalal", lat: -38.173056, lng: -57.651944, pat: /chapadmalal/ },
@@ -48,8 +49,8 @@ let personas = [];
 let porId = new Map();
 let estadosServidor = {};
 let pendientes = {};
-let geoCache = {};            // clave -> { lat, lng, tipo }   (lat null = no se pudo ubicar)
-let geoFallos = new Set();    // claves que fallaron por error de red en esta sesión
+let geoCache = {};
+let geoFallos = new Set();
 let geoCorriendo = false;
 let mapInstance = null;
 let markersGroup = L.layerGroup();
@@ -60,6 +61,7 @@ let chipEstado = "activos";
 let cardsLimit = MAX_CARDS;
 let sincronizando = false;
 let personaModal = null;
+let syncTimer = null;
 
 // ---------------------------------------------------------------- utilidades
 function $(id) { return document.getElementById(id); }
@@ -120,8 +122,12 @@ function telefonoWa(tel) {
 }
 
 // ---------------------------------------------------------------- red (Apps Script)
+function getWebappUrl() {
+  return WEBAPP_BASE + "?token=" + encodeURIComponent(tokenActual);
+}
+
 async function apiGet(action, extra) {
-  let url = WEBAPP_URL + "&action=" + action;
+  let url = getWebappUrl() + "&action=" + action;
   if (extra) for (const k in extra) url += "&" + k + "=" + encodeURIComponent(extra[k]);
   const r = await fetch(url);
   const j = await r.json();
@@ -130,7 +136,7 @@ async function apiGet(action, extra) {
 }
 
 async function apiPost(action, items) {
-  const r = await fetch(WEBAPP_URL + "&action=" + action, {
+  const r = await fetch(getWebappUrl() + "&action=" + action, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({ items })
@@ -138,6 +144,154 @@ async function apiPost(action, items) {
   const j = await r.json();
   if (j && j.error) throw new Error(j.error);
   return j;
+}
+
+// ---------------------------------------------------------------- seguridad / login
+function cerrarSesion() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  tokenActual = "";
+  if (syncTimer) clearInterval(syncTimer);
+  location.reload();
+}
+
+async function intentarLogin(claveIngresada) {
+  const btn = $("btnLoginEntrar");
+  const errEl = $("loginErrorMsg");
+  const cleanKey = String(claveIngresada || "").trim();
+  if (!cleanKey) return;
+
+  btn.disabled = true;
+  btn.textContent = "Verificando...";
+  errEl.style.display = "none";
+
+  tokenActual = cleanKey;
+  try {
+    await apiGet("estados");
+    localStorage.setItem(TOKEN_STORAGE_KEY, tokenActual);
+    $("loginOverlay").style.display = "none";
+    iniciarAppAutenticada();
+  } catch (e) {
+    tokenActual = "";
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    errEl.textContent = e.message.includes("No autorizado") ? "Clave incorrecta." : ("Error: " + e.message);
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Ingresar";
+  }
+}
+
+// ---------------------------------------------------------------- UI: Colapsar y redimensionar barra lateral
+function togglePanelFiltros() {
+  const panel = $("panelFiltrosColapsable");
+  const btn = $("btnToggleFiltros");
+  if (!panel || !btn) return;
+  const oculto = panel.classList.toggle("collapsed");
+  btn.textContent = oculto ? "▼ Mostrar filtros" : "▲ Ocultar filtros";
+}
+
+function initSidebarResizer() {
+  const sidebar = $("sidebarSplit");
+  const resizer = $("sidebarResizer");
+  if (!sidebar || !resizer) return;
+
+  let arrastrando = false;
+
+  resizer.addEventListener("mousedown", (e) => {
+    arrastrando = true;
+    resizer.classList.add("resizing");
+    document.body.style.cursor = "ew-resize";
+    e.preventDefault();
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (!arrastrando) return;
+    const nuevoAncho = Math.min(Math.max(e.clientX, 340), window.innerWidth * 0.75);
+    sidebar.style.width = nuevoAncho + "px";
+  });
+
+  document.addEventListener("mouseup", () => {
+    if (!arrastrando) return;
+    arrastrando = false;
+    resizer.classList.remove("resizing");
+    document.body.style.cursor = "";
+    if (mapInstance) mapInstance.invalidateSize();
+  });
+}
+
+// ---------------------------------------------------------------- carga manual de postulante
+function abrirModalNuevo() {
+  const form = $("formNuevoPostulante");
+  if (form) form.reset();
+  const m = $("nuevoModal");
+  if (m) m.style.display = "flex";
+}
+
+function cerrarModalNuevo() {
+  const m = $("nuevoModal");
+  if (m) m.style.display = "none";
+}
+
+async function guardarNuevoPostulante(e) {
+  e.preventDefault();
+  const btn = $("btnGuardarNuevo");
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+
+  const nombre = $("newNombre").value.trim();
+  const tel = $("newTel").value.trim();
+  const email = $("newEmail").value.trim().toLowerCase();
+  const dir = $("newDir").value.trim();
+  const nac = $("newNac").value;
+  const sector = $("newSector").value;
+  const puesto = $("newPuesto").value.trim() || "Referido / Manual";
+  const local = $("newLocal").value;
+  const estado = $("newEstado").value;
+  const nota = $("newNota").value.trim();
+  const ahoraStr = new Date().toISOString().replace("T", " ").slice(0, 19);
+
+  // Construimos una fila respetando los encabezados reales de la planilla
+  const nuevaFila = headersCrudos.map(h => {
+    const k = sinTildes(h);
+    if (k.includes("marca temporal")) return ahoraStr;
+    if (k.includes("nombre completo")) return nombre;
+    if (k.includes("fecha de nacimiento")) return nac;
+    if (k === "correo electronico" || k.includes("direccion de correo")) return email;
+    if (k === "direccion") return dir;
+    if (k.includes("telefono")) return tel;
+    if (k.includes("puesto de interes")) return puesto;
+    if (k.includes("cual de nuestros locales")) return local;
+    if (k.includes("buscas sumarte")) return sector;
+    if (k.includes("desde donde te contactas")) return "Mar del Plata (Carga manual)";
+    if (k.includes("queres agregar")) return nota;
+    return "";
+  });
+
+  try {
+    // 1. Intentamos guardarlo en Google Sheets vía Apps Script
+    await apiPost("agregar", [{
+      ts: ahoraStr, nombre, nac, email, dir, tel,
+      sector, puesto, local, estado, nota, fila: nuevaFila
+    }]);
+
+    // 2. Lo sumamos localmente de inmediato
+    filasCrudas.push(nuevaFila);
+    construirPersonas();
+
+    const tel10 = tel.replace(/\D/g, "").slice(-10);
+    const idPersona = email ? "e:" + email : (tel10.length >= 8 ? "t:" + tel10 : "n:" + sinTildes(nombre));
+    setEstado(idPersona, estado, nota);
+
+    toast("Postulante cargado ✔");
+    cerrarModalNuevo();
+    renderTodo();
+    geocodificarPendientes();
+  } catch (err) {
+    toast("No se pudo guardar en Sheets: " + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Guardar postulante";
+  }
 }
 
 // ---------------------------------------------------------------- domicilios y zonas (OPTIMIZADO MDP)
@@ -387,7 +541,7 @@ async function cargarEstados() {
 }
 
 async function sincronizarAhora() {
-  if (sincronizando) return;
+  if (sincronizando || !tokenActual) return;
   sincronizando = true;
   const st = $("syncStatus");
   if (st) st.textContent = "Sincronizando...";
@@ -406,7 +560,7 @@ async function sincronizarAhora() {
 }
 
 async function recargarTodo() {
-  if (sincronizando) return;
+  if (sincronizando || !tokenActual) return;
   sincronizando = true;
   const st = $("syncStatus");
   if (st) st.textContent = "Recargando todo...";
@@ -506,6 +660,19 @@ function poblarSelectores() {
   llenar("mapLocalFilter", '<option value="todos">Eligieron cualquier sucursal</option>');
   llenar("mapCercaFilter", '<option value="ninguno">— sin filtro de distancia —</option>');
   llenar("pipelineLocal", '<option value="todos">Todas las sucursales</option>');
+
+  // También llenamos el selector del modal "Nuevo Postulante"
+  const newLoc = $("newLocal");
+  if (newLoc) {
+    newLoc.innerHTML = '<option value="Cualquiera">Cualquiera / Sin preferencia</option>';
+    locs.forEach(l => {
+      const o = document.createElement("option");
+      o.value = l.nombre;
+      o.textContent = l.nombre;
+      newLoc.appendChild(o);
+    });
+  }
+
   const e = $("mapExpFilter");
   if (e) {
     e.innerHTML = '<option value="todas">Cualquier experiencia</option>' +
@@ -886,13 +1053,27 @@ function poblarPuestosSiHaceFalta() {
 
 function filtrarCerca(id) { if ($("mapCercaFilter")) $("mapCercaFilter").value = id; renderMapa(); }
 
-// ---------------------------------------------------------------- arranque
-document.addEventListener("DOMContentLoaded", async () => {
+// ---------------------------------------------------------------- arranque e inicialización
+async function iniciarAppAutenticada() {
   try { pendientes = JSON.parse(localStorage.getItem(PEND_KEY) || "{}"); } catch (e) { pendientes = {}; }
-  initMap();
-  poblarSelectores();
-  initKanbanDrop();
+  if (!mapInstance) {
+    initMap();
+    poblarSelectores();
+    initKanbanDrop();
+    initSidebarResizer();
+  }
   actualizarPendStatus();
+  await recargarTodo();
+  enviarPendientes(false);
+  if (syncTimer) clearInterval(syncTimer);
+  syncTimer = setInterval(sincronizarAhora, AUTOSYNC_INTERVALO_MS);
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  const inp = $("loginTokenInput");
+  const btn = $("btnLoginEntrar");
+  if (btn) btn.addEventListener("click", () => intentarLogin(inp.value));
+  if (inp) inp.addEventListener("keydown", e => { if (e.key === "Enter") intentarLogin(inp.value); });
 
   let deb;
   const redibujar = () => { cardsLimit = MAX_CARDS; renderMapa(); };
@@ -901,8 +1082,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "mapB1Filter", "mapAntigFilter", "mapEdadMin", "mapEdadMax", "mapUbicFilter"].forEach(i => { if ($(i)) $(i).addEventListener("change", redibujar); });
   
   if ($("mapZonaFilter")) {
-    $("mapZonaFilter").addEventListener("change", e => {
-      mapInstance.flyTo([-38.0055, -57.555], 12);
+    $("mapZonaFilter").addEventListener("change", () => {
+      if (mapInstance) mapInstance.flyTo([-38.0055, -57.555], 12);
       redibujar();
     });
   }
@@ -910,7 +1091,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("mapLocalFilter")) {
     $("mapLocalFilter").addEventListener("change", e => {
       const loc = LOCALES_SAO.find(l => l.id === e.target.value);
-      if (loc) mapInstance.flyTo([loc.lat, loc.lng], 13);
+      if (loc && mapInstance) mapInstance.flyTo([loc.lat, loc.lng], 13);
       redibujar();
     });
   }
@@ -940,6 +1121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       chipEstado = "activos";
       document.querySelectorAll(".quick-status-chips .chip[data-status]").forEach(x => x.classList.toggle("active", x.dataset.status === "activos"));
       redibujar();
+      toast("Filtros limpiados");
     });
   }
 
@@ -948,9 +1130,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("descSearch")) $("descSearch").addEventListener("input", renderDescartados);
   if ($("modalVerMapa")) $("modalVerMapa").addEventListener("click", () => { const p = personaModal; cerrarModal(); if (p) verEnMapa(p.id); });
   if ($("candidateModal")) $("candidateModal").addEventListener("click", e => { if (e.target.id === "candidateModal") cerrarModal(); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape") cerrarModal(); });
+  if ($("nuevoModal")) $("nuevoModal").addEventListener("click", e => { if (e.target.id === "nuevoModal") cerrarModalNuevo(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { cerrarModal(); cerrarModalNuevo(); } });
 
-  await recargarTodo();
-  enviarPendientes(false);
-  setInterval(sincronizarAhora, AUTOSYNC_INTERVALO_MS);
+  const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (savedToken) {
+    await intentarLogin(savedToken);
+  }
 });
