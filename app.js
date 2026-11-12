@@ -1,8 +1,11 @@
 // =====================================================================================
-// SÃO — Portal de Selección y RRHH (app.js)  ·  v5.1 (Exclusivo MDP y Costa Atlántica)
+// SÃO — Portal de Selección y RRHH (app.js)  ·  v5.2 (MDP + Seguridad por Clave)
 // =====================================================================================
 
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwOnSQu8YbKKaNJodfFiL6pyH_NTPH6OMzWjWHgDN2kgj2WLJ8NAmZYR9Kk7F37oY4ZUA/exec?token=Sao-rrhh-operaciones-postulaciones";
+const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbxTZJjFtZjA-iG3MbzTqfyPeuYLE3T1LkCWf9kujfL-az7jzmSfbp9wwHFAvcW2vmd7pA/exec";
+const TOKEN_STORAGE_KEY = "sao_auth_token_v1";
+let tokenActual = "";
+
 const AUTOSYNC_INTERVALO_MS = 30 * 1000;
 const CHUNK = 1500;          // filas que se bajan por tanda
 const MAX_CARDS = 100;       // tarjetas visibles por lista / columna
@@ -60,6 +63,7 @@ let chipEstado = "activos";
 let cardsLimit = MAX_CARDS;
 let sincronizando = false;
 let personaModal = null;
+let syncTimer = null;
 
 // ---------------------------------------------------------------- utilidades
 function $(id) { return document.getElementById(id); }
@@ -120,8 +124,12 @@ function telefonoWa(tel) {
 }
 
 // ---------------------------------------------------------------- red (Apps Script)
+function getWebappUrl() {
+  return WEBAPP_BASE + "?token=" + encodeURIComponent(tokenActual);
+}
+
 async function apiGet(action, extra) {
-  let url = WEBAPP_URL + "&action=" + action;
+  let url = getWebappUrl() + "&action=" + action;
   if (extra) for (const k in extra) url += "&" + k + "=" + encodeURIComponent(extra[k]);
   const r = await fetch(url);
   const j = await r.json();
@@ -130,7 +138,7 @@ async function apiGet(action, extra) {
 }
 
 async function apiPost(action, items) {
-  const r = await fetch(WEBAPP_URL + "&action=" + action, {
+  const r = await fetch(getWebappUrl() + "&action=" + action, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({ items })
@@ -138,6 +146,42 @@ async function apiPost(action, items) {
   const j = await r.json();
   if (j && j.error) throw new Error(j.error);
   return j;
+}
+
+// ---------------------------------------------------------------- seguridad / login
+function cerrarSesion() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  tokenActual = "";
+  if (syncTimer) clearInterval(syncTimer);
+  location.reload();
+}
+
+async function intentarLogin(claveIngresada) {
+  const btn = $("btnLoginEntrar");
+  const errEl = $("loginErrorMsg");
+  const cleanKey = String(claveIngresada || "").trim();
+  if (!cleanKey) return;
+
+  btn.disabled = true;
+  btn.textContent = "Verificando...";
+  errEl.style.display = "none";
+
+  tokenActual = cleanKey;
+  try {
+    // Validamos el token pidiendo los estados (es una consulta muy liviana)
+    await apiGet("estados");
+    localStorage.setItem(TOKEN_STORAGE_KEY, tokenActual);
+    $("loginOverlay").style.display = "none";
+    iniciarAppAutenticada();
+  } catch (e) {
+    tokenActual = "";
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    errEl.textContent = e.message.includes("No autorizado") ? "Clave incorrecta." : ("Error: " + e.message);
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Ingresar";
+  }
 }
 
 // ---------------------------------------------------------------- domicilios y zonas (OPTIMIZADO MDP)
@@ -387,7 +431,7 @@ async function cargarEstados() {
 }
 
 async function sincronizarAhora() {
-  if (sincronizando) return;
+  if (sincronizando || !tokenActual) return;
   sincronizando = true;
   const st = $("syncStatus");
   if (st) st.textContent = "Sincronizando...";
@@ -406,7 +450,7 @@ async function sincronizarAhora() {
 }
 
 async function recargarTodo() {
-  if (sincronizando) return;
+  if (sincronizando || !tokenActual) return;
   sincronizando = true;
   const st = $("syncStatus");
   if (st) st.textContent = "Recargando todo...";
@@ -886,14 +930,29 @@ function poblarPuestosSiHaceFalta() {
 
 function filtrarCerca(id) { if ($("mapCercaFilter")) $("mapCercaFilter").value = id; renderMapa(); }
 
-// ---------------------------------------------------------------- arranque
-document.addEventListener("DOMContentLoaded", async () => {
+// ---------------------------------------------------------------- arranque e inicialización
+async function iniciarAppAutenticada() {
   try { pendientes = JSON.parse(localStorage.getItem(PEND_KEY) || "{}"); } catch (e) { pendientes = {}; }
-  initMap();
-  poblarSelectores();
-  initKanbanDrop();
+  if (!mapInstance) {
+    initMap();
+    poblarSelectores();
+    initKanbanDrop();
+  }
   actualizarPendStatus();
+  await recargarTodo();
+  enviarPendientes(false);
+  if (syncTimer) clearInterval(syncTimer);
+  syncTimer = setInterval(sincronizarAhora, AUTOSYNC_INTERVALO_MS);
+}
 
+document.addEventListener("DOMContentLoaded", async () => {
+  // Configuración de eventos del modal de login
+  const inp = $("loginTokenInput");
+  const btn = $("btnLoginEntrar");
+  if (btn) btn.addEventListener("click", () => intentarLogin(inp.value));
+  if (inp) inp.addEventListener("keydown", e => { if (e.key === "Enter") intentarLogin(inp.value); });
+
+  // Eventos de UI generales
   let deb;
   const redibujar = () => { cardsLimit = MAX_CARDS; renderMapa(); };
   if ($("mapSearchInput")) $("mapSearchInput").addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(redibujar, 250); });
@@ -901,8 +960,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "mapB1Filter", "mapAntigFilter", "mapEdadMin", "mapEdadMax", "mapUbicFilter"].forEach(i => { if ($(i)) $(i).addEventListener("change", redibujar); });
   
   if ($("mapZonaFilter")) {
-    $("mapZonaFilter").addEventListener("change", e => {
-      mapInstance.flyTo([-38.0055, -57.555], 12);
+    $("mapZonaFilter").addEventListener("change", () => {
+      if (mapInstance) mapInstance.flyTo([-38.0055, -57.555], 12);
       redibujar();
     });
   }
@@ -910,7 +969,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("mapLocalFilter")) {
     $("mapLocalFilter").addEventListener("change", e => {
       const loc = LOCALES_SAO.find(l => l.id === e.target.value);
-      if (loc) mapInstance.flyTo([loc.lat, loc.lng], 13);
+      if (loc && mapInstance) mapInstance.flyTo([loc.lat, loc.lng], 13);
       redibujar();
     });
   }
@@ -950,7 +1009,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("candidateModal")) $("candidateModal").addEventListener("click", e => { if (e.target.id === "candidateModal") cerrarModal(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape") cerrarModal(); });
 
-  await recargarTodo();
-  enviarPendientes(false);
-  setInterval(sincronizarAhora, AUTOSYNC_INTERVALO_MS);
+  // Verificar si ya hay una clave guardada en este navegador
+  const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (savedToken) {
+    await intentarLogin(savedToken);
+  }
 });
