@@ -704,7 +704,9 @@ function leerFiltros() {
     texto: sinTildes(v("mapSearchInput")), area: v("mapAreaFilter"), zona: v("mapZonaFilter"), local: v("mapLocalFilter"),
     cerca: v("mapCercaFilter"), radio: parseFloat(v("mapRadioFilter")) || 3, puesto: v("mapPuestoFilter"), exp: v("mapExpFilter"),
     estudia: sinTildes(v("mapEstudiaFilter")), trabaja: sinTildes(v("mapTrabajaFilter")), b1: sinTildes(v("mapB1Filter")),
-    antig: parseInt(v("mapAntigFilter"), 10) || 0, edadMin: parseInt(v("mapEdadMin"), 10) || 0, edadMax: parseInt(v("mapEdadMax"), 10) || 0,
+    fechaDesde: v("mapFechaDesde"),
+    fechaHasta: v("mapFechaHasta"),
+    edadMin: parseInt(v("mapEdadMin"), 10) || 0, edadMax: parseInt(v("mapEdadMax"), 10) || 0,
     ubic: v("mapUbicFilter")
   };
 }
@@ -730,7 +732,14 @@ function filtrarMapa() {
     if (F.estudia !== "todos" && sinTildes(p.estudia) !== F.estudia) continue;
     if (F.trabaja !== "todos" && sinTildes(p.trabaja) !== F.trabaja) continue;
     if (F.b1 !== "todos" && p.b1 !== F.b1) continue;
-    if (F.antig && p.dias > F.antig) continue;
+    if (F.fechaDesde) {
+      const dDesde = new Date(F.fechaDesde + "T00:00:00");
+      if (!p.lastTs || p.lastTs < dDesde) continue;
+    }
+    if (F.fechaHasta) {
+      const dHasta = new Date(F.fechaHasta + "T23:59:59");
+      if (!p.lastTs || p.lastTs > dHasta) continue;
+    }
     if (F.edadMin && (p.edad == null || p.edad < F.edadMin)) continue;
     if (F.edadMax && (p.edad == null || p.edad > F.edadMax)) continue;
     const u = ubicacion(p);
@@ -1087,7 +1096,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const redibujar = () => { cardsLimit = MAX_CARDS; renderMapa(); };
   if ($("mapSearchInput")) $("mapSearchInput").addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(redibujar, 250); });
   ["mapAreaFilter", "mapCercaFilter", "mapRadioFilter", "mapPuestoFilter", "mapExpFilter", "mapEstudiaFilter", "mapTrabajaFilter",
-    "mapB1Filter", "mapAntigFilter", "mapEdadMin", "mapEdadMax", "mapUbicFilter"].forEach(i => { if ($(i)) $(i).addEventListener("change", redibujar); });
+    "mapB1Filter", "mapFechaDesde", "mapFechaHasta", "mapEdadMin", "mapEdadMax", "mapUbicFilter"].forEach(i => { if ($(i)) $(i).addEventListener("change", redibujar); });
   
   if ($("mapZonaFilter")) {
     $("mapZonaFilter").addEventListener("change", () => {
@@ -1113,7 +1122,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if ($("btnResetFiltros")) {
     $("btnResetFiltros").addEventListener("click", () => {
-      ["mapSearchInput", "mapEdadMin", "mapEdadMax"].forEach(i => { if ($(i)) $(i).value = ""; });
+      ["mapSearchInput", "mapEdadMin", "mapEdadMax", "mapFechaDesde", "mapFechaHasta"].forEach(i => { if ($(i)) $(i).value = ""; });
       if ($("mapAreaFilter")) $("mapAreaFilter").value = "todas";
       if ($("mapZonaFilter")) $("mapZonaFilter").value = "todas";
       if ($("mapLocalFilter")) $("mapLocalFilter").value = "todos";
@@ -1124,7 +1133,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       if ($("mapEstudiaFilter")) $("mapEstudiaFilter").value = "todos";
       if ($("mapTrabajaFilter")) $("mapTrabajaFilter").value = "todos";
       if ($("mapB1Filter")) $("mapB1Filter").value = "todos";
-      if ($("mapAntigFilter")) $("mapAntigFilter").value = "0";
       if ($("mapUbicFilter")) $("mapUbicFilter").value = "todos";
       chipEstado = "activos";
       document.querySelectorAll(".quick-status-chips .chip[data-status]").forEach(x => x.classList.toggle("active", x.dataset.status === "activos"));

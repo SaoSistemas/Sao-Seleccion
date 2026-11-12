@@ -139,13 +139,16 @@
                 <option value="Sí">Licencia B1: sí</option>
                 <option value="No">Licencia B1: no</option>
               </select>
-              <select id="mapAntigFilter">
-                <option value="0">Postulación: cualquier fecha</option>
-                <option value="30">Últimos 30 días</option>
-                <option value="90">Últimos 3 meses</option>
-                <option value="180">Últimos 6 meses</option>
-                <option value="365">Último año</option>
-              </select>
+              <div class="grid-2" style="align-items:center;">
+                <div>
+                  <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:2px;">Postulado desde:</label>
+                  <input type="date" id="mapFechaDesde" title="Postulado desde">
+                </div>
+                <div>
+                  <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:2px;">Postulado hasta:</label>
+                  <input type="date" id="mapFechaHasta" title="Postulado hasta">
+                </div>
+              </div>
               <div class="grid-2">
                 <input type="number" id="mapEdadMin" placeholder="Edad mín." min="14" max="80">
                 <input type="number" id="mapEdadMax" placeholder="Edad máx." min="14" max="80">
