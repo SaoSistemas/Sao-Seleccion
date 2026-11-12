@@ -139,6 +139,8 @@
                 <option value="Sí">Licencia B1: sí</option>
                 <option value="No">Licencia B1: no</option>
               </select>
+
+              <!-- Rango de fecha de postulación -->
               <div class="grid-2" style="align-items:center;">
                 <div>
                   <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:2px;">Postulado desde:</label>
@@ -149,6 +151,7 @@
                   <input type="date" id="mapFechaHasta" title="Postulado hasta">
                 </div>
               </div>
+
               <div class="grid-2">
                 <input type="number" id="mapEdadMin" placeholder="Edad mín." min="14" max="80">
                 <input type="number" id="mapEdadMax" placeholder="Edad máx." min="14" max="80">
@@ -331,6 +334,9 @@
             <select id="newLocal">
               <option value="Cualquiera">Cualquiera</option>
             </select>
+
+            <label class="form-lbl">CV en PDF o Imagen (Opcional)</label>
+            <input type="file" id="newCvFile" accept=".pdf,.doc,.docx,image/*" style="padding: 5px; font-size: 0.78rem;">
 
             <label class="form-lbl">Estado inicial</label>
             <select id="newEstado">

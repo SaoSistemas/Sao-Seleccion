@@ -1,8 +1,8 @@
 // =====================================================================================
-// SÃO — Portal de Selección y RRHH (app.js)  ·  v5.3 (MDP + Carga Manual + Resize)
+// SÃO — Portal de Selección y RRHH (app.js)  ·  v5.4 (MDP + Carga Manual + Sin Homónimos)
 // =====================================================================================
 
-const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbyJImmL7EyVuQ8k9x736rsRrlEriya7-8WsqJznHA3BHx_OYFaoPRYM99h9NVthVKD11g/exec";
+const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbzycjA_-PUtzBuQ4DQQCbcaHURjExPaos5b-egAIb26HOEffT_gRqHcupbr5_KiU4y6/exec";
 const TOKEN_STORAGE_KEY = "sao_auth_token_v1";
 let tokenActual = "";
 
@@ -166,17 +166,12 @@ async function intentarLogin(claveIngresada) {
 
   tokenActual = cleanKey;
   try {
-    // 1. Validamos la clave con una consulta rápida
     await apiGet("estados");
-    
-    // 2. Guardamos la clave y ocultamos el bloqueo INMEDIATAMENTE
     localStorage.setItem(TOKEN_STORAGE_KEY, tokenActual);
     const overlay = $("loginOverlay");
     if (overlay) {
       overlay.style.setProperty("display", "none", "important");
     }
-    
-    // 3. Ahora sí descargamos la planilla viendo el progreso en pantalla
     iniciarAppAutenticada();
   } catch (e) {
     tokenActual = "";
@@ -240,6 +235,22 @@ function cerrarModalNuevo() {
   if (m) m.style.display = "none";
 }
 
+function leerArchivoBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = String(reader.result || "").split(",")[1] || "";
+      resolve({
+        nombre: file.name,
+        tipo: file.type || "application/octet-stream",
+        datos: base64
+      });
+    };
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo del CV"));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function guardarNuevoPostulante(e) {
   e.preventDefault();
   const btn = $("btnGuardarNuevo");
@@ -258,7 +269,22 @@ async function guardarNuevoPostulante(e) {
   const nota = $("newNota").value.trim();
   const ahoraStr = new Date().toISOString().replace("T", " ").slice(0, 19);
 
-  // Construimos una fila respetando los encabezados reales de la planilla
+  let cvArchivo = null;
+  const fileInput = $("newCvFile");
+  if (fileInput && fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    if (file.size > 8 * 1024 * 1024) {
+      toast("El archivo supera los 8 MB máximos permitidos", true);
+      btn.disabled = false;
+      btn.textContent = "Guardar postulante";
+      return;
+    }
+    btn.textContent = "Subiendo CV...";
+    cvArchivo = await leerArchivoBase64(file);
+  }
+
+  const idxColCv = headersCrudos.map(sinTildes).findIndex(h => h.includes("cv"));
+
   const nuevaFila = headersCrudos.map(h => {
     const k = sinTildes(h);
     if (k.includes("marca temporal")) return ahoraStr;
@@ -276,26 +302,31 @@ async function guardarNuevoPostulante(e) {
   });
 
   try {
-    // 1. Intentamos guardarlo en Google Sheets vía Apps Script
-    await apiPost("agregar", [{
+    const resp = await apiPost("agregar", [{
       ts: ahoraStr, nombre, nac, email, dir, tel,
-      sector, puesto, local, estado, nota, fila: nuevaFila
+      sector, puesto, local, estado, nota,
+      fila: nuevaFila,
+      cvArchivo: cvArchivo,
+      idxColCv: idxColCv
     }]);
 
-    // 2. Lo sumamos localmente de inmediato
+    if (resp && resp.cvUrl && idxColCv >= 0) {
+      nuevaFila[idxColCv] = resp.cvUrl;
+    }
+
     filasCrudas.push(nuevaFila);
     construirPersonas();
 
     const tel10 = tel.replace(/\D/g, "").slice(-10);
-    const idPersona = email ? "e:" + email : (tel10.length >= 8 ? "t:" + tel10 : "n:" + sinTildes(nombre));
+    const idPersona = email ? "e:" + email : (tel10.length >= 8 ? "t:" + tel10 : "f:" + (filasCrudas.length - 1) + "_" + sinTildes(ahoraStr));
     setEstado(idPersona, estado, nota);
 
-    toast("Postulante cargado ✔");
+    toast(cvArchivo ? "Postulante y CV guardados ✔" : "Postulante cargado ✔");
     cerrarModalNuevo();
     renderTodo();
     geocodificarPendientes();
   } catch (err) {
-    toast("No se pudo guardar en Sheets: " + err.message, true);
+    toast("No se pudo guardar: " + err.message, true);
   } finally {
     btn.disabled = false;
     btn.textContent = "Guardar postulante";
@@ -466,7 +497,7 @@ function construirPersonas() {
 
   const grupos = new Map();
   let totalPost = 0;
-  filasCrudas.forEach(r => {
+  filasCrudas.forEach((r, idx) => {
     const g = i => (i >= 0 && r[i] != null) ? String(r[i]).trim() : "";
     const nombre = g(C.nombre), tsStr = g(C.ts);
     if (!nombre && !tsStr) return;
@@ -479,7 +510,8 @@ function construirPersonas() {
       cv: g(C.cv), sector: g(C.sector), contacto: g(C.contacto), fila: r
     };
     const tel10 = post.tel.replace(/\D/g, "").slice(-10);
-    const key = post.email ? "e:" + post.email : (tel10.length >= 8 ? "t:" + tel10 : "n:" + sinTildes(nombre));
+    // Agrupamos únicamente por correo o teléfono (nunca por nombre para evitar homónimos)
+    const key = post.email ? "e:" + post.email : (tel10.length >= 8 ? "t:" + tel10 : "f:" + idx + "_" + sinTildes(tsStr));
     if (!grupos.has(key)) grupos.set(key, []);
     grupos.get(key).push(post);
   });
@@ -669,7 +701,6 @@ function poblarSelectores() {
   llenar("mapCercaFilter", '<option value="ninguno">— sin filtro de distancia —</option>');
   llenar("pipelineLocal", '<option value="todos">Todas las sucursales</option>');
 
-  // También llenamos el selector del modal "Nuevo Postulante"
   const newLoc = $("newLocal");
   if (newLoc) {
     newLoc.innerHTML = '<option value="Cualquiera">Cualquiera / Sin preferencia</option>';
