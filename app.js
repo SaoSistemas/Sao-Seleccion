@@ -1,8 +1,8 @@
 // =====================================================================================
-// SÃO — Portal de Selección y RRHH (app.js)  ·  v5.4 (MDP + Carga Manual + Sin Homónimos)
+// SÃO — Portal de Selección y RRHH (app.js) · v6.2 (Mapeo completo A..DK + Sedes Alfar/San Isidro)
 // =====================================================================================
 
-const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbzycjA_-PUtzBuQ4DQQCbcaHURjExPaos5b-egAIb26HOEffT_gRqHcupbr5_KiU4y6/exec";
+const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbwFcUa9cSwV8E1IxVXuvXTolnWlQK0Y-Uw5RuXpLb39qOTTk5a3JnU1rdX89DiJncaDFA/exec";
 const TOKEN_STORAGE_KEY = "sao_auth_token_v1";
 let tokenActual = "";
 
@@ -10,36 +10,46 @@ const AUTOSYNC_INTERVALO_MS = 30 * 1000;
 const CHUNK = 1500;
 const MAX_CARDS = 100;
 const PEND_KEY = "sao_pend_v1";
-const GEO_DELAY_MS = 1100;
 
 const ESTADOS_ACTIVOS = ["Pendiente", "Recomendado", "Entrevista"];
 const NOMBRE_ESTADO = { Pendiente: "Pendiente", Recomendado: "Recomendado", Entrevista: "Entrevista", NoGusto: "No gustó", Contratado: "Contratado", Rechazado: "Rechazado" };
 const COLOR_ESTADO = { Pendiente: "#7f8c8d", Recomendado: "#f1c40f", Entrevista: "#3498db", NoGusto: "#e67e22", Contratado: "#2ecc71", Rechazado: "#e74c3c" };
 const SECTORES = { locales: "Locales", produccion: "Producción", logistica: "Logística" };
 
-const BBOX = {
-  mdp:   [-38.28, -57.90, -37.80, -57.40],
-  costa: [-38.45, -58.10, -36.80, -56.60]
-};
-
 const LOCALES_SAO = [
-  { id: "pinamar", nombre: "Pinamar", zona: "mdp", direccion: "Av. Arq. Jorge Bunge 1055, Pinamar", lat: -37.1121868, lng: -56.8662241, pat: /pinamar/ },
-  { id: "chapadmalal", nombre: "Chapadmalal", zona: "mdp", direccion: "Chapadmalal", lat: -38.173056, lng: -57.651944, pat: /chapadmalal/ },
-  { id: "mar_de_las_pampas", nombre: "Mar de las Pampas", zona: "mdp", direccion: "Mar de las Pampas, Villa Gesell", lat: -37.3257858, lng: -57.0222331, pat: /pampas/ },
-  { id: "alfar", nombre: "Alfar", zona: "mdp", direccion: "Guillermo Magrassi 4885, Alfar", lat: -38.1003796, lng: -57.5612371, pat: /alfar|magrassi/ },
-  { id: "diagonal", nombre: "Diagonal", zona: "mdp", direccion: "Diagonal Pueyrredón 2989", lat: -37.9987567, lng: -57.5502357, pat: /diagonal/ },
-  { id: "constitucion", nombre: "Constitución", zona: "mdp", direccion: "Av. Constitución 4298", lat: -37.9695491, lng: -57.5467467, pat: /constitucion 4298|constitucion$/ },
-  { id: "las_palmeras", nombre: "Las Palmeras", zona: "mdp", direccion: "Av. Constitución 6690", lat: -37.957343, lng: -57.5706836, pat: /constitucion 6690|palmeras/ },
-  { id: "playa_grande", nombre: "Playa Grande", zona: "mdp", direccion: "Playa Grande (Balneario 8)", lat: -38.0277922, lng: -57.5323172, pat: /playa grande/ },
-  { id: "tienda_leon", nombre: "Tienda León", zona: "mdp", direccion: "Av. Pedro Luro 5550", lat: -37.9837151, lng: -57.576151, pat: /luro 5550|tienda leon/ },
-  { id: "peatonal", nombre: "Peatonal", zona: "mdp", direccion: "Peatonal San Martín 2468", lat: -38.0001889, lng: -57.5456374, pat: /peatonal/ },
-  { id: "paso", nombre: "Paso", zona: "mdp", direccion: "Av. Juan José Paso 3004", lat: -38.0173866, lng: -57.5670633, pat: /juan jose paso|\bpaso\b/ },
-  { id: "chauvin", nombre: "Chauvin", zona: "mdp", direccion: "Hipólito Yrigoyen 3192", lat: -38.0098698, lng: -57.5593746, pat: /yrigoyen|chauvin/ },
-  { id: "alem", nombre: "Alem", zona: "mdp", direccion: "Leandro N. Alem 3883", lat: -38.0288428, lng: -57.5371325, pat: /alem 3883|\balem\b/ },
-  { id: "edison", nombre: "Edison", zona: "mdp", direccion: "Av. Edison 1821", lat: -38.0511406, lng: -57.5600539, pat: /edison/ },
-  { id: "olavarria", nombre: "Olavarría", zona: "mdp", direccion: "Olavarría 3002", lat: -38.0160937, lng: -57.5433462, pat: /olavarria/ },
-  { id: "aldrey", nombre: "Aldrey", zona: "mdp", direccion: "Sarmiento 2646 (Paseo Aldrey)", lat: -38.0122446, lng: -57.5428786, pat: /aldrey/ },
-  { id: "bendu", nombre: "Bendu", zona: "mdp", direccion: "Av. de los Trabajadores 150", lat: -38.0424496, lng: -57.5427405, pat: /bendu/ }
+  // Fábricas y Centros Logísticos (misma coordenada exacta que Alfar y San Isidro)
+  { id: "fabrica_alfar", nombre: "Fábrica Alfar", tipo: "fabrica", formLabel: "Fábrica Alfar (Mar del Plata)", zona: "mdp", direccion: "Guillermo Magrassi 4885, Alfar", lat: -38.1003796, lng: -57.5612371, pat: /fabrica.*alfar|produccion.*alfar|planta.*alfar/ },
+  { id: "logistica_alfar", nombre: "Logística Alfar", tipo: "logistica", formLabel: "Logística Alfar (Mar del Plata)", zona: "mdp", direccion: "Guillermo Magrassi 4885, Alfar", lat: -38.1003796, lng: -57.5612371, pat: /logistica.*alfar|deposito.*alfar/ },
+  { id: "fabrica_san_isidro", nombre: "Fábrica San Isidro", tipo: "fabrica", formLabel: "Fábrica San Isidro (GBA)", zona: "bsas", direccion: "Av. del Libertador 14643, San Isidro", lat: -34.47735, lng: -58.50165, pat: /fabrica.*san isidro|produccion.*san isidro|planta.*san isidro/ },
+  { id: "logistica_san_isidro", nombre: "Logística San Isidro", tipo: "logistica", formLabel: "Logística San Isidro (GBA)", zona: "bsas", direccion: "Av. del Libertador 14643, San Isidro", lat: -34.47735, lng: -58.50165, pat: /logistica.*san isidro|deposito.*san isidro/ },
+
+  // Locales Mar del Plata y Costa Atlántica
+  { id: "pinamar", nombre: "Pinamar", tipo: "local", formLabel: "Pinamar Av Bunge 1055", zona: "mdp", direccion: "Av. Arq. Jorge Bunge 1055, Pinamar", lat: -37.1121868, lng: -56.8662241, pat: /pinamar/ },
+  { id: "alfar", nombre: "Alfar", tipo: "local", formLabel: "Alfar, G. Magrassi 4995", zona: "mdp", direccion: "Guillermo Magrassi 4885, Alfar", lat: -38.1003796, lng: -57.5612371, pat: /alfar|magrassi/ },
+  { id: "diagonal", nombre: "Diagonal", tipo: "local", formLabel: "Diagonal Pueyrredon Esq. Rivadavia", zona: "mdp", direccion: "Diagonal Pueyrredón 2989", lat: -37.9987567, lng: -57.5502357, pat: /diagonal/ },
+  { id: "constitucion", nombre: "Constitución", tipo: "local", formLabel: "Constitución 4298", zona: "mdp", direccion: "Av. Constitución 4298", lat: -37.9695491, lng: -57.5467467, pat: /constitucion 4298|constitucion$/ },
+  { id: "las_palmeras", nombre: "Las Palmeras", tipo: "local", formLabel: "Av. Constitución 6690", zona: "mdp", direccion: "Av. Constitución 6690", lat: -37.957343, lng: -57.5706836, pat: /constitucion 6690|palmeras/ },
+  { id: "playa_grande", nombre: "Playa Grande", tipo: "local", formLabel: "Playa Grande", zona: "mdp", direccion: "Playa Grande (Balneario 8)", lat: -38.0277922, lng: -57.5323172, pat: /playa grande/ },
+  { id: "tienda_leon", nombre: "Tienda León", tipo: "local", formLabel: "Av. Luro 5550", zona: "mdp", direccion: "Av. Pedro Luro 5550", lat: -37.9837151, lng: -57.576151, pat: /luro 5550|tienda leon/ },
+  { id: "peatonal", nombre: "Peatonal", tipo: "local", formLabel: "Peatonal San Martín 2468", zona: "mdp", direccion: "Peatonal San Martín 2468", lat: -38.0001889, lng: -57.5456374, pat: /peatonal/ },
+  { id: "paso", nombre: "Paso", tipo: "local", formLabel: "Av. Juan José Paso 3004", zona: "mdp", direccion: "Av. Juan José Paso 3004", lat: -38.0173866, lng: -57.5670633, pat: /juan jose paso|\bpaso\b/ },
+  { id: "chauvin", nombre: "Chauvin", tipo: "local", formLabel: "H. Yrigoyen esq. San Lorenzo", zona: "mdp", direccion: "Hipólito Yrigoyen 3192", lat: -38.0098698, lng: -57.5593746, pat: /yrigoyen|chauvin/ },
+  { id: "alem", nombre: "Alem", tipo: "local", formLabel: "Alem 3883", zona: "mdp", direccion: "Leandro N. Alem 3883", lat: -38.0288428, lng: -57.5371325, pat: /alem 3883|\balem\b/ },
+  { id: "edison", nombre: "Edison", tipo: "local", formLabel: "Av. Edison 1821", zona: "mdp", direccion: "Av. Edison 1821", lat: -38.0511406, lng: -57.5600539, pat: /edison/ },
+  { id: "olavarria", nombre: "Olavarría", tipo: "local", formLabel: "Alvarado esq. Olavarría", zona: "mdp", direccion: "Olavarría 3002", lat: -38.0160937, lng: -57.5433462, pat: /olavarria/ },
+  { id: "aldrey", nombre: "Aldrey", tipo: "local", formLabel: "Paseo Aldrey", zona: "mdp", direccion: "Sarmiento 2646 (Paseo Aldrey)", lat: -38.0122446, lng: -57.5428786, pat: /aldrey/ },
+  { id: "bendu", nombre: "Bendu", tipo: "local", formLabel: "Bendu", zona: "mdp", direccion: "Av. de los Trabajadores 150", lat: -38.0424496, lng: -57.5427405, pat: /bendu/ },
+
+  // Locales Buenos Aires (CABA, GBA, Zárate y La Plata)
+  { id: "san_isidro", nombre: "San Isidro", tipo: "local", formLabel: "Sao San Isidro - Av. del Libertador 14643. San Isidro", zona: "bsas", direccion: "Av. del Libertador 14643, San Isidro", lat: -34.47735, lng: -58.50165, pat: /san isidro|libertador 14643/ },
+  { id: "villa_urquiza", nombre: "Villa Urquiza", tipo: "local", formLabel: "Sao Villa Urquiza -Díaz Colodrero 2315", zona: "bsas", direccion: "Díaz Colodrero 2315, Villa Urquiza, CABA", lat: -34.57472, lng: -58.48755, pat: /urquiza|colodrero/ },
+  { id: "villa_devoto", nombre: "Villa Devoto", tipo: "local", formLabel: "Sao Villa Devoto - Gualeguaychú 3920", zona: "bsas", direccion: "Gualeguaychú 3920, Villa Devoto, CABA", lat: -34.60245, lng: -58.51135, pat: /devoto|gualeguaychu/ },
+  { id: "paseo_houssay", nombre: "Paseo Houssay", tipo: "local", formLabel: "Sao Paseo Houssay - Av. Córdoba y Junín", zona: "bsas", direccion: "Av. Córdoba y Junín, CABA", lat: -34.59945, lng: -58.39765, pat: /houssay|cordoba y junin/ },
+  { id: "zarate_ruta_9", nombre: "Zárate Ruta 9", tipo: "local", formLabel: "Sao Zárate Ruta 9 - Croacia 2860. Zárate.", zona: "bsas", direccion: "Croacia 2860, Zárate", lat: -34.10165, lng: -59.04885, pat: /zarate|croacia 2860/ },
+  { id: "belgrano", nombre: "Belgrano", tipo: "local", formLabel: "Sao Belgrano - Av. Juramento 2527", zona: "bsas", direccion: "Av. Juramento 2527, Belgrano, CABA", lat: -34.56215, lng: -58.45865, pat: /belgrano|juramento 2527/ },
+  { id: "la_plata", nombre: "La Plata", tipo: "local", formLabel: "Sao La Plata - Calle 11 1051", zona: "bsas", direccion: "Calle 11 1051, La Plata", lat: -34.91825, lng: -57.95315, pat: /la plata|calle 11 1051/ },
+  { id: "madero", nombre: "Madero", tipo: "local", formLabel: "Sao Madero - Pierina Dealessi & Boulevard Rosario Vera Peñaloza", zona: "bsas", direccion: "Pierina Dealessi y Blvd. Rosario Vera Peñaloza, Puerto Madero, CABA", lat: -34.61885, lng: -58.36245, pat: /madero|dealessi|penaloza/ },
+  { id: "palmas_del_pilar", nombre: "Palmas del Pilar", tipo: "local", formLabel: "Sao Palmas del Pilar - Las Magnolias 757", zona: "bsas", direccion: "Las Magnolias 757 (Palmas del Pilar), Pilar", lat: -34.44815, lng: -58.87125, pat: /pilar|magnolias 757/ }
 ];
 
 // ---------------------------------------------------------------- estado global
@@ -62,6 +72,7 @@ let cardsLimit = MAX_CARDS;
 let sincronizando = false;
 let personaModal = null;
 let syncTimer = null;
+let localSeleccionadoId = null;
 
 // ---------------------------------------------------------------- utilidades
 function $(id) { return document.getElementById(id); }
@@ -96,7 +107,26 @@ function distanciaKm(lat1, lng1, lat2, lng2) {
 
 function parseFecha(s) {
   if (!s) return null;
-  const d = new Date(String(s).replace(" ", "T"));
+  const str = String(s).trim();
+
+  // 1. Formato DD/MM/YYYY [HH:mm[:ss]]
+  const mArg = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (mArg) {
+    return new Date(+mArg[3], +mArg[2] - 1, +mArg[1], +(mArg[4] || 0), +(mArg[5] || 0), +(mArg[6] || 0));
+  }
+
+  // 2. Formato ISO YYYY-MM-DD (evita el desfase UTC-3 de new Date("YYYY-MM-DD"))
+  const mIso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (mIso) {
+    // Si termina en Z y tiene hora (ej. objeto Date serializado desde Apps Script), se respeta la conversión
+    if (/Z$/i.test(str) && mIso[4] != null) {
+      const dUtc = new Date(str);
+      return isNaN(dUtc) ? null : dUtc;
+    }
+    return new Date(+mIso[1], +mIso[2] - 1, +mIso[3], +(mIso[4] || 0), +(mIso[5] || 0), +(mIso[6] || 0));
+  }
+
+  const d = new Date(str.replace(" ", "T"));
   return isNaN(d) ? null : d;
 }
 
@@ -169,9 +199,7 @@ async function intentarLogin(claveIngresada) {
     await apiGet("estados");
     localStorage.setItem(TOKEN_STORAGE_KEY, tokenActual);
     const overlay = $("loginOverlay");
-    if (overlay) {
-      overlay.style.setProperty("display", "none", "important");
-    }
+    if (overlay) overlay.style.setProperty("display", "none", "important");
     iniciarAppAutenticada();
   } catch (e) {
     tokenActual = "";
@@ -223,32 +251,36 @@ function initSidebarResizer() {
 }
 
 // ---------------------------------------------------------------- carga manual de postulante
+function actualizarCamposNuevoPostulante() {
+  const sec = $("newSector") ? $("newSector").value : "";
+  const puesto = $("newPuesto");
+  const local = $("newLocal");
+  const zona = $("newZona") ? $("newZona").value : "";
+  const esBsAs = zona !== "Mar del Plata y Costa Atlantica";
+
+  if (puesto) {
+    if (sec === "Logistica") puesto.value = "Picking/Armado de Pedidos";
+    else if (sec === "Producción en fábrica") puesto.value = "Pasteleria, Panadería, Sandwicheria";
+    else if (puesto.value.includes("Picking") || puesto.value.includes("Pasteleria")) {
+      puesto.value = "Atención al publico en local";
+    }
+  }
+
+  if (local) {
+    if (sec === "Logistica") {
+      local.value = esBsAs ? "Logística San Isidro (GBA)" : "Logística Alfar (Mar del Plata)";
+    } else if (sec === "Producción en fábrica") {
+      local.value = esBsAs ? "Fábrica San Isidro (GBA)" : "Fábrica Alfar (Mar del Plata)";
+    }
+  }
+}
+
 function abrirModalNuevo() {
   const form = $("formNuevoPostulante");
   if (form) form.reset();
+  actualizarCamposNuevoPostulante();
   const m = $("nuevoModal");
   if (m) m.style.display = "flex";
-}
-
-function cerrarModalNuevo() {
-  const m = $("nuevoModal");
-  if (m) m.style.display = "none";
-}
-
-function leerArchivoBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = String(reader.result || "").split(",")[1] || "";
-      resolve({
-        nombre: file.name,
-        tipo: file.type || "application/octet-stream",
-        datos: base64
-      });
-    };
-    reader.onerror = () => reject(new Error("No se pudo leer el archivo del CV"));
-    reader.readAsDataURL(file);
-  });
 }
 
 async function guardarNuevoPostulante(e) {
@@ -262,9 +294,12 @@ async function guardarNuevoPostulante(e) {
   const email = $("newEmail").value.trim().toLowerCase();
   const dir = $("newDir").value.trim();
   const nac = $("newNac").value;
+  const zona = $("newZona") ? $("newZona").value : "Mar del Plata y Costa Atlantica";
   const sector = $("newSector").value;
-  const puesto = $("newPuesto").value.trim() || "Referido / Manual";
+  const puesto = $("newPuesto").value;
   const local = $("newLocal").value;
+  const expForm = $("newExperiencia") ? $("newExperiencia").value : "";
+  const b1 = $("newLicenciaB1") ? $("newLicenciaB1").value : "No";
   const estado = $("newEstado").value;
   const nota = $("newNota").value.trim();
   const ahoraStr = new Date().toISOString().replace("T", " ").slice(0, 19);
@@ -283,23 +318,59 @@ async function guardarNuevoPostulante(e) {
     cvArchivo = await leerArchivoBase64(file);
   }
 
-  const idxColCv = headersCrudos.map(sinTildes).findIndex(h => h.includes("cv"));
+  const esBsAs = zona !== "Mar del Plata y Costa Atlantica";
+  const esLog = sector === "Logistica";
+  const esProd = sector === "Producción en fábrica";
 
-  const nuevaFila = headersCrudos.map(h => {
-    const k = sinTildes(h);
-    if (k.includes("marca temporal")) return ahoraStr;
-    if (k.includes("nombre completo")) return nombre;
-    if (k.includes("fecha de nacimiento")) return nac;
-    if (k === "correo electronico" || k.includes("direccion de correo")) return email;
-    if (k === "direccion") return dir;
-    if (k.includes("telefono")) return tel;
-    if (k.includes("puesto de interes")) return puesto;
-    if (k.includes("cual de nuestros locales")) return local;
-    if (k.includes("buscas sumarte")) return sector;
-    if (k.includes("desde donde te contactas")) return "Mar del Plata (Carga manual)";
-    if (k.includes("queres agregar")) return nota;
-    return "";
-  });
+  // Mapa exacto de columnas según la rama del Google Form
+  // MDP/Costa: Locales = sin sufijo | Logística = .2 | Producción = .3
+  // AMBA/LP/Zárate: Locales = .5 | Logística = .7 | Producción = .8
+  const sufijo = esBsAs
+    ? (esLog ? ".7" : (esProd ? ".8" : ".5"))
+    : (esLog ? ".2" : (esProd ? ".3" : ""));
+
+  const idxExacto = exacto => headersCrudos.findIndex(h => String(h || "").trim() === exacto);
+  const nuevaFila = new Array(headersCrudos.length).fill("");
+
+  const setCol = (headerExacto, valor) => {
+    if (!valor) return -1;
+    const i = idxExacto(headerExacto);
+    if (i >= 0) nuevaFila[i] = valor;
+    return i;
+  };
+
+  // Datos generales de cabecera (columnas A..D + zona BL + equipo AL/BK)
+  setCol("Marca temporal", ahoraStr);
+  setCol("Dirección de correo electrónico", email);
+  setCol("Nombre Completo", nombre);
+  setCol("Fecha de nacimiento", nac);
+  setCol("Desde donde te contactas", zona);
+  setCol(esBsAs ? "Buscas sumarte a nuestro equipo de.2" : "Buscas sumarte a nuestro equipo de", sector);
+
+  // Datos de contacto de la rama correspondiente
+  setCol("Correo electrónico" + sufijo, email);
+  setCol("Dirección" + sufijo, dir);
+  setCol("Número de teléfono" + sufijo, tel);
+
+  // Datos específicos según rama (Locales vs Logística/Producción)
+  if (esLog || esProd) {
+    const sufPuesto = esBsAs ? (esLog ? ".2" : ".3") : (esLog ? "" : ".1");
+    setCol("En cual de nuestros equipos te gustaría trabajar? /Puestos de interes" + sufPuesto, puesto);
+    setCol("Contas con experiencia previa en el area?" + sufPuesto, expForm);
+  } else {
+    setCol("Puesto de interés" + sufijo, puesto);
+    setCol("¿En cual de nuestros locales te gustaría trabajar?" + sufijo, local);
+    if (expForm && expForm !== "Primer Empleo") {
+      setCol("¿Queres agregar algo sobre tus estudios o actividades?" + sufijo, "Experiencia declarada: " + expForm);
+    }
+  }
+
+  // Licencia B1 (si es Logística o si se marcó "Sí" en cualquier otra área)
+  if (esLog || b1 === "Sí") {
+    setCol(esBsAs ? "Contas con Licencia B1?.1" : "Contas con Licencia B1?", b1);
+  }
+
+  const idxColCv = idxExacto("Carga tu CV" + sufijo);
 
   try {
     const resp = await apiPost("agregar", [{
@@ -333,7 +404,28 @@ async function guardarNuevoPostulante(e) {
   }
 }
 
-// ---------------------------------------------------------------- domicilios y zonas (OPTIMIZADO MDP)
+function cerrarModalNuevo() {
+  const m = $("nuevoModal");
+  if (m) m.style.display = "none";
+}
+
+function leerArchivoBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = String(reader.result || "").split(",")[1] || "";
+      resolve({
+        nombre: file.name,
+        tipo: file.type || "application/octet-stream",
+        datos: base64
+      });
+    };
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo del CV"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// ---------------------------------------------------------------- domicilios y zonas (MDP + Costa + BA + La Plata + Zárate)
 function limpiarDireccion(dir) {
   let d = String(dir || "").replace(/\([^)]*\)/g, " ").split("//")[0];
   d = d.replace(/\b(piso|pb|depto|dpto|dto|departamento|torre|monoblock|mza|mz|manzana|lote|casa|timbre)\b.*$/i, " ");
@@ -342,65 +434,38 @@ function limpiarDireccion(dir) {
 }
 
 const RE_COSTA = /\b(pinamar|gesell|miramar|santa clara|mar chiquita|mar de las pampas|las gaviotas|mar azul|cariloo?|ostende|valeria del mar|san bernardo|la lucila|santa teresita|mar del tuyu|costa azul)\b/;
+const RE_BSAS  = /\b(caba|capital federal|palermo|belgrano|recoleta|caballito|almagro|flores|floresta|devoto|urquiza|nunez|saavedra|colegiales|chacarita|villa crespo|boedo|san telmo|monserrat|retiro|puerto madero|madero|houssay|barracas|la boca|pompeya|liniers|mataderos|lugano|avellaneda|lanus|lomas|banfield|temperley|adrogu[eé]|quilmes|berazategui|florencio varela|moron|haedo|ramos mejia|castelar|ituzaingo|merlo|moreno|san justo|la matanza|san martin|caseros|ciudadela|tres de febrero|vicente lopez|olivos|martinez|san isidro|beccar|san fernando|tigre|nordelta|pacheco|escobar|pilar|zarate|campana|la plata|city bell|gonnet|villa elisa|tolosa|ringuelet|los hornos|berisso|ensenada)\b/;
 
-function zonaDe(contacto, dir) {
+function zonaDe(contacto, dir, localesTxt) {
+  const c = sinTildes(contacto);
   const d = sinTildes(dir);
-  if (d && RE_COSTA.test(d)) return "costa";
-  return "mdp";
+  const l = sinTildes(localesTxt);
+  if (c.includes("amba") || c.includes("caba") || c.includes("gran buenos aires") || c.includes("gba") || c.includes("zarate") || c.includes("la plata") || c.includes("buenos aires")) return "bsas";
+  if (c.includes("mar del plata") || c.includes("costa")) return "mdp";
+  if (l && /san isidro|zarate|la plata|urquiza|devoto|belgrano|madero|houssay|pilar/.test(l)) return "bsas";
+  if (d && RE_BSAS.test(d)) return "bsas";
+  if (d && RE_COSTA.test(d)) return "mdp";
+  if (d && !/\b(cordoba|rosario|santa fe|mendoza|tucuman|salta|neuquen|bariloche|bahia blanca|tandil|necochea)\b/.test(d)) return "mdp";
+  return c ? "otra" : "sin";
 }
 
 function geoZona(zona, dir) {
-  return RE_COSTA.test(sinTildes(dir)) ? "costa" : "mdp";
+  const d = sinTildes(dir);
+  if (RE_COSTA.test(d)) return "costa";
+  if (zona === "bsas" || RE_BSAS.test(d)) return "bsas";
+  return "mdp";
 }
 
-function claveGeo(dir, gz) { return gz + "|" + sinTildes(limpiarDireccion(dir)); }
-
-// ---------------------------------------------------------------- geocodificación (OpenStreetMap / Nominatim)
-async function consultarNominatim(q, bb) {
-  const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=4&countrycodes=ar&accept-language=es&bounded=1" +
-    "&viewbox=" + [bb[1], bb[2], bb[3], bb[0]].join(",") + "&q=" + encodeURIComponent(q);
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("HTTP " + r.status);
-  return r.json();
+function claveGeo(dir, gz, contacto) {
+  const c = sinTildes(contacto);
+  const suf = c.includes("zarate") ? "|z" : (c.includes("la plata") ? "|lp" : "");
+  return gz + suf + "|" + sinTildes(limpiarDireccion(dir));
 }
 
-const TIPOS_VAGOS = ["city", "town", "village", "state", "county", "country", "municipality", "state_district", "region", "postcode"];
-
-function elegirResultado(lista, bb, tieneNumero) {
-  for (const x of lista || []) {
-    const lat = parseFloat(x.lat), lng = parseFloat(x.lon);
-    if (isNaN(lat) || isNaN(lng)) continue;
-    if (lat < bb[0] || lat > bb[2] || lng < bb[1] || lng > bb[3]) continue;
-    if (TIPOS_VAGOS.indexOf(x.addresstype) >= 0) continue;
-    const exacto = x.type === "house" || x.addresstype === "house" || x.category === "building";
-    const calle = x.category === "highway" || x.addresstype === "road";
-    return { lat, lng, tipo: exacto ? "OK" : (calle ? (tieneNumero ? "CALLE" : "APROX") : "APROX") };
-  }
-  return null;
-}
-
-async function geocodificarDireccion(dir, gz) {
-  const base = limpiarDireccion(dir);
-  if (!base) return { lat: null, lng: null, tipo: "NO" };
-  const bb = BBOX[gz] || BBOX.mdp;
-  const ciudad = gz === "costa" ? ", Buenos Aires, Argentina" : ", Mar del Plata, Buenos Aires";
-  const variantes = [base];
-  const sinBarrio = base.replace(/\b(barrio|bº|b°|bo)\b.*$/i, "").trim();
-  if (sinBarrio && sinBarrio !== base && sinBarrio.length > 4) variantes.push(sinBarrio);
-  
-  for (let i = 0; i < variantes.length; i++) {
-    if (i > 0) await dormir(GEO_DELAY_MS);
-    const lista = await consultarNominatim(variantes[i] + ciudad, bb);
-    const res = elegirResultado(lista, bb, /\d/.test(variantes[i]));
-    if (res) return res;
-  }
-  return { lat: null, lng: null, tipo: "NO" };
-}
-
+// ---------------------------------------------------------------- geocodificación (vía Google Apps Script)
 async function geocodificarPendientes() {
   if (geoCorriendo) return;
   geoCorriendo = true;
-  const aGuardar = [];
   let errores = 0, hechos = 0;
   try {
     const vistos = new Set();
@@ -409,108 +474,188 @@ async function geocodificarPendientes() {
       .sort((a, b) => (ESTADOS_ACTIVOS.includes(b.estado) - ESTADOS_ACTIVOS.includes(a.estado)) || (b.lastTs - a.lastTs))
       .filter(p => !vistos.has(p.geoKey) && vistos.add(p.geoKey));
 
-    for (let i = 0; i < cola.length; i++) {
-      const p = cola[i];
-      if (p.geoKey in geoCache) continue;
-      setCarga("📍 Ubicando domicilios nuevos… quedan " + (cola.length - i));
+    const LOTE_SIZE = 25;
+    for (let i = 0; i < cola.length; i += LOTE_SIZE) {
+      const bloque = cola.slice(i, i + LOTE_SIZE);
+      setCarga("📍 Ubicando domicilios… quedan " + (cola.length - i));
+
+      const payload = bloque.map(p => {
+        const base = limpiarDireccion(p.dir);
+        const c = sinTildes(p.contacto);
+        const d = sinTildes(base);
+        let ciudad = ", Mar del Plata, Buenos Aires, Argentina";
+        if (p.geoZona === "costa") {
+          ciudad = ", Buenos Aires, Argentina";
+        } else if (p.geoZona === "bsas") {
+          if (c.includes("zarate") && !d.includes("zarate")) ciudad = ", Zárate, Buenos Aires, Argentina";
+          else if ((/\b(calle\s*\d+|\d+\s*(n|entre|y)\s*\d+)\b/.test(d) || c.includes("la plata")) && !RE_BSAS.test(d)) ciudad = ", La Plata, Buenos Aires, Argentina";
+          else ciudad = ", Buenos Aires, Argentina";
+        }
+        return { key: p.geoKey, gz: p.geoZona, query: base + ciudad };
+      });
+
       try {
-        const res = await geocodificarDireccion(p.dir, p.geoZona);
-        geoCache[p.geoKey] = res;
-        aGuardar.push({ key: p.geoKey, lat: res.lat, lng: res.lng, tipo: res.tipo });
-        errores = 0; hechos++;
+        const resLote = await apiPost("geocodificar_lote", payload);
+        if (Array.isArray(resLote)) {
+          resLote.forEach(r => {
+            geoCache[r.key] = (r.lat != null && r.lng != null)
+              ? { lat: r.lat, lng: r.lng, tipo: r.tipo || "OK" }
+              : { lat: null, lng: null, tipo: "NO" };
+            hechos++;
+          });
+        }
+        errores = 0;
+        renderTodo();
       } catch (err) {
-        geoFallos.add(p.geoKey);
         errores++;
-        if (errores >= 3) { setCarga("⚠️ El servicio de mapas no responde. Se reintenta en la próxima sincronización."); break; }
-        await dormir(5000);
+        if (errores >= 3) {
+          setCarga("⚠️ Error al geocodificar: " + err.message);
+          break;
+        }
+        await dormir(2000);
       }
-      if (aGuardar.length >= 15) { await guardarGeoLote(aGuardar); }
-      if (hechos > 0 && hechos % 25 === 0) renderTodo();
-      await dormir(GEO_DELAY_MS);
     }
   } finally {
-    await guardarGeoLote(aGuardar);
     geoCorriendo = false;
     if (errores < 3) setCarga("");
     if (hechos > 0) renderTodo();
   }
 }
 
-async function guardarGeoLote(arr) {
-  if (!arr.length) return;
-  const lote = arr.splice(0, arr.length);
-  try { await apiPost("geo_guardar", lote); }
-  catch (e) { Array.prototype.push.apply(arr, lote); }
-}
-
 async function cargarGeo() {
   try {
     const nuevas = await apiGet("geo");
     if (Array.isArray(nuevas)) nuevas.forEach(g => {
-      if (!g.key) return;
-      geoCache[g.key] = (g.lat == null || g.lng == null) ? { lat: null, lng: null, tipo: "NO" } : { lat: g.lat, lng: g.lng, tipo: g.tipo || "OK" };
-    });
-  } catch (e) {}
-  try {
-    const viejas = await apiGet("geoviejo");
-    if (Array.isArray(viejas)) viejas.forEach(v => {
-      const dir = v[0], lat = v[1], lng = v[2];
-      if (!limpiarDireccion(dir)) return;
-      const gz = geoZona("mdp", dir);
-      const bb = BBOX[gz] || BBOX.mdp;
-      if (lat < bb[0] || lat > bb[2] || lng < bb[1] || lng > bb[3]) return;
-      const k = claveGeo(dir, gz);
-      if (!(k in geoCache)) geoCache[k] = { lat, lng, tipo: "OK" };
+      const key = Array.isArray(g) ? g[0] : g.key;
+      const lat = parseFloat(Array.isArray(g) ? g[1] : g.lat);
+      const lng = parseFloat(Array.isArray(g) ? g[2] : g.lng);
+      const tipo = (Array.isArray(g) ? g[3] : g.tipo) || "OK";
+      if (!key) return;
+      geoCache[key] = (isNaN(lat) || isNaN(lng)) ? { lat: null, lng: null, tipo: "NO" } : { lat, lng, tipo };
     });
   } catch (e) {}
 }
 
-// ---------------------------------------------------------------- armado de personas
-function localesDe(texto) {
+// ---------------------------------------------------------------- armado de personas (SOPORTE 115 COLUMNAS A..DK)
+function localesDe(texto, sector, zona) {
   const t = sinTildes(texto);
-  if (!t) return [];
-  return LOCALES_SAO.filter(l => l.pat.test(t)).map(l => l.id);
+  const ids = t ? LOCALES_SAO.filter(l => l.pat.test(t)).map(l => l.id) : [];
+
+  // Asignación automática a Fábrica o Logística según zona (MDP -> Alfar, BA -> San Isidro)
+  if (sector === "produccion") {
+    if (zona === "bsas") {
+      if (!ids.includes("fabrica_san_isidro")) ids.push("fabrica_san_isidro");
+    } else {
+      if (!ids.includes("fabrica_alfar")) ids.push("fabrica_alfar");
+    }
+  } else if (sector === "logistica") {
+    if (zona === "bsas") {
+      if (!ids.includes("logistica_san_isidro")) ids.push("logistica_san_isidro");
+    } else {
+      if (!ids.includes("logistica_alfar")) ids.push("logistica_alfar");
+    }
+  }
+  return ids;
 }
 
 function categoriaExperiencia(p) {
+  const expForm = sinTildes(p.expForm);
+  if (expForm.includes("primer empleo")) return "ninguna";
+  if (expForm.includes("ano") || expForm.includes("menos de 1") || expForm.includes("mas de 5")) {
+    return p.sector === "logistica" ? "otra" : "gastronomia";
+  }
   const t = sinTildes([p.notas, p.dondeTrab].join(" "));
-  if (/camarer|mozo|moza|cocin|barista|gastronom|restaur|pizz|heladeri|cafeteri|\bbar\b/.test(t)) return "gastronomia";
+  if (/camarer|mozo|moza|cocin|barista|gastronom|restaur|pizz|heladeri|cafeteri|\bbar\b|panader|pastel|amasad|produccion|fabrica/.test(t)) return "gastronomia";
   if (/venta|vendedor|atencion|cajer|comercio|kiosco|tienda|promotor|reposit|local/.test(t)) return "ventas";
   if (/primer/.test(sinTildes(p.puesto)) || !t) return "ninguna";
   return "otra";
 }
-const NOMBRE_EXP = { gastronomia: "Gastronomía", ventas: "Atención / ventas", ninguna: "Sin experiencia declarada", otra: "Otra experiencia" };
+const NOMBRE_EXP = { gastronomia: "Gastronomía / Producción", ventas: "Atención / ventas", ninguna: "Sin experiencia declarada", otra: "Otra experiencia" };
 
 function construirPersonas() {
   const H = headersCrudos.map(sinTildes);
-  const f = fn => H.findIndex(fn);
-  const C = {
-    ts: f(h => h.includes("marca temporal")), nombre: f(h => h.includes("nombre completo")),
-    nac: f(h => h.includes("fecha de nacimiento")), emailForm: f(h => h.includes("direccion de correo")),
-    email: f(h => h === "correo electronico"), dir: f(h => h === "direccion"), tel: f(h => h.includes("telefono")),
-    estudia: f(h => h.includes("estas estudiando")), dondeEst: f(h => h.includes("si tu respuesta fue si")),
-    carrera: f(h => h.includes("carrera")), notas: f(h => h.includes("queres agregar")),
-    trabaja: f(h => h.includes("estas trabajando actualmente")), dondeTrab: f(h => h.startsWith("si estas trabajando")),
-    puesto: f(h => h.includes("puesto de interes")), locales: f(h => h.includes("cual de nuestros locales")),
-    cv: f(h => h.includes("cv")), sector: f(h => h.includes("buscas sumarte")), contacto: f(h => h.includes("desde donde te contactas"))
+  const allIdx = fn => {
+    const res = [];
+    H.forEach((h, i) => { if (fn(h)) res.push(i); });
+    return res;
+  };
+
+  // Mapeo exacto de las 115 columnas (A hasta DK)
+  const COLS = {
+    ts:        allIdx(h => h.includes("marca temporal")),
+    nombre:    allIdx(h => h.includes("nombre completo")),
+    nac:       allIdx(h => h.includes("fecha de nacimiento")),
+    emailForm: allIdx(h => h.includes("direccion de correo")),
+    email:     allIdx(h => h === "correo electronico" || h.startsWith("correo electronico")),
+    dir:       allIdx(h => !h.includes("correo") && (h === "direccion" || h.startsWith("direccion."))),
+    tel:       allIdx(h => h.includes("numero de telefono")),
+    estudia:   allIdx(h => h.includes("estas estudiando")),
+    dondeEst:  allIdx(h => h.includes("si tu respuesta fue si")),
+    carrera:   allIdx(h => h.includes("cual carrera")),
+    notas:     allIdx(h => h.includes("queres agregar algo sobre tus estudios")),
+    trabaja:   allIdx(h => h.includes("estas trabajando actualmente")),
+    dondeTrab: allIdx(h => h.startsWith("si estas trabajando")),
+    puesto:    allIdx(h => h.includes("puesto de interes") || h.includes("equipos te gustaria trabajar")),
+    locales:   allIdx(h => h.includes("cual de nuestros locales")),
+    expForm:   allIdx(h => h.includes("contas con experiencia previa") || h.includes("tenes experiencia en")),
+    licencia:  allIdx(h => h.includes("licencia b1")),
+    cv:        allIdx(h => h.includes("carga tu cv")),
+    sector:    allIdx(h => h.includes("buscas sumarte a nuestro equipo")),
+    contacto:  allIdx(h => h.includes("desde donde te contactas"))
   };
 
   const grupos = new Map();
   let totalPost = 0;
+
   filasCrudas.forEach((r, idx) => {
-    const g = i => (i >= 0 && r[i] != null) ? String(r[i]).trim() : "";
-    const nombre = g(C.nombre), tsStr = g(C.ts);
+    const g = indices => {
+      for (let k = 0; k < indices.length; k++) {
+        const val = r[indices[k]];
+        if (val != null && String(val).trim() !== "") return String(val).trim();
+      }
+      return "";
+    };
+    const gAll = indices => {
+      const vals = [];
+      for (let k = 0; k < indices.length; k++) {
+        const val = r[indices[k]];
+        if (val != null && String(val).trim() !== "") vals.push(String(val).trim());
+      }
+      return vals.join(" , ");
+    };
+
+    const nombre = g(COLS.nombre), tsStr = g(COLS.ts);
     if (!nombre && !tsStr) return;
     totalPost++;
+
+    // Lee todas las columnas de "Buscas sumarte a nuestro equipo de" (AL y BK)
+    const sectorRaw = gAll(COLS.sector);
+    const puestoRaw = gAll(COLS.puesto);
+
     const post = {
-      ts: parseFecha(tsStr), nombre, nac: parseFecha(g(C.nac)),
-      email: (g(C.email) || g(C.emailForm)).toLowerCase(), dir: g(C.dir), tel: g(C.tel),
-      estudia: g(C.estudia), dondeEst: g(C.dondeEst), carrera: g(C.carrera), notas: g(C.notas),
-      trabaja: g(C.trabaja), dondeTrab: g(C.dondeTrab), puesto: g(C.puesto), locales: g(C.locales),
-      cv: g(C.cv), sector: g(C.sector), contacto: g(C.contacto), fila: r
+      ts: parseFecha(tsStr),
+      nombre,
+      nac: parseFecha(g(COLS.nac)),
+      email: (g(COLS.email) || g(COLS.emailForm)).toLowerCase(),
+      dir: g(COLS.dir),
+      tel: g(COLS.tel),
+      estudia: g(COLS.estudia),
+      dondeEst: g(COLS.dondeEst),
+      carrera: g(COLS.carrera),
+      notas: gAll(COLS.notas),
+      trabaja: g(COLS.trabaja),
+      dondeTrab: g(COLS.dondeTrab),
+      puesto: puestoRaw,
+      locales: gAll(COLS.locales),
+      expForm: gAll(COLS.expForm),
+      licencia: gAll(COLS.licencia),
+      cv: gAll(COLS.cv),
+      sector: sectorRaw,
+      contacto: g(COLS.contacto),
+      fila: r
     };
+
     const tel10 = post.tel.replace(/\D/g, "").slice(-10);
-    // Agrupamos únicamente por correo o teléfono (nunca por nombre para evitar homónimos)
     const key = post.email ? "e:" + post.email : (tel10.length >= 8 ? "t:" + tel10 : "f:" + idx + "_" + sinTildes(tsStr));
     if (!grupos.has(key)) grupos.set(key, []);
     grupos.get(key).push(post);
@@ -527,19 +672,33 @@ function construirPersonas() {
       id, posts, nombre: ult.nombre || "Sin nombre", dir: pick("dir"), tel: pick("tel"), email: pick("email"),
       nac: pick("nac") || null, estudia: ult.estudia, dondeEst: ult.dondeEst, carrera: ult.carrera, notas: ult.notas,
       trabaja: ult.trabaja, dondeTrab: ult.dondeTrab, puesto: ult.puesto || "", locales: ult.locales || "",
-      contacto: ult.contacto, lastTs: ult.ts || new Date(0), firstTs: posts[posts.length - 1].ts || new Date(0)
+      expForm: ult.expForm || "", licencia: pick("licencia"), contacto: ult.contacto,
+      lastTs: ult.ts || new Date(0), firstTs: posts[posts.length - 1].ts || new Date(0)
     };
-    const sec = sinTildes(ult.sector);
-    p.sector = sec.includes("produc") ? "produccion" : sec.includes("logist") ? "logistica" : "locales";
-    p.zona = zonaDe(p.contacto, p.dir);
+
+    // Clasificación exacta por columna AL / BK ("Buscas sumarte a nuestro equipo de")
+    const secNorm = sinTildes(ult.sector);
+    const puestoNorm = sinTildes(ult.puesto);
+    if (secNorm.includes("produc") || (!secNorm && /pasteleria|panaderia|sandwicheria/.test(puestoNorm))) {
+      p.sector = "produccion";
+    } else if (secNorm.includes("logist") || (!secNorm && /picking|armado de pedidos/.test(puestoNorm))) {
+      p.sector = "logistica";
+    } else {
+      p.sector = "locales";
+    }
+
+    p.zona = zonaDe(p.contacto, p.dir, p.locales);
     p.geoZona = geoZona(p.zona, p.dir);
-    p.geoKey = p.dir ? claveGeo(p.dir, p.geoZona) : "";
+    p.geoKey = p.dir ? claveGeo(p.dir, p.geoZona, p.contacto) : "";
     p.edad = edadDe(p.nac);
-    p.localesIds = localesDe(p.locales);
+    p.localesIds = localesDe(p.locales, p.sector, p.zona);
     p.exp = categoriaExperiencia(p);
+
+    const licNorm = sinTildes(p.licencia);
     const textoB1 = sinTildes([p.notas, p.dondeTrab, p.dondeEst].join(" "));
-    p.b1 = /\bb[ .-]?1\b|licencia profesional|carnet profesional/.test(textoB1) ? "si" : "no";
-    p.texto = sinTildes([p.nombre, p.puesto, p.carrera, p.dondeEst, p.dondeTrab, p.dir, p.tel, p.email, p.locales].join(" "));
+    p.b1 = (licNorm === "si" || licNorm.includes("si") || /\bb[ .-]?1\b|licencia profesional|carnet profesional/.test(textoB1)) ? "si" : "no";
+
+    p.texto = sinTildes([p.nombre, p.puesto, p.carrera, p.dondeEst, p.dondeTrab, p.dir, p.tel, p.email, p.locales, p.expForm, p.notas].join(" "));
     const st = estadosServidor[id];
     p.estado = (st && st.estado) || "Pendiente";
     p.nota = (st && st.nota) || "";
@@ -671,15 +830,56 @@ function initMap() {
 function dibujarLocales() {
   localesLayer.clearLayers();
   LOCALES_SAO.forEach(loc => {
-    const icon = L.divIcon({ className: "sao-pin", html: '<div class="pin-local">SÃO</div>', iconSize: [32, 32], iconAnchor: [16, 16] });
+    const etiqueta = loc.tipo === "fabrica" ? "FÁB" : (loc.tipo === "logistica" ? "LOG" : "SÃO");
+    const estiloExtra = loc.tipo === "fabrica"
+      ? "background:#1e1e1e; color:#e67e22; border-color:#e67e22;"
+      : (loc.tipo === "logistica" ? "background:#1e1e1e; color:#2ecc71; border-color:#2ecc71;" : "");
+
+    // Desplazamiento fijo en píxeles para que queden pegados [FÁB] [SÃO] [LOG] a cualquier nivel de zoom
+    const anchorX = loc.tipo === "fabrica" ? 53 : (loc.tipo === "logistica" ? -19 : 17);
+
+    const icon = L.divIcon({
+      className: "sao-pin",
+      html: '<div class="pin-local" style="' + estiloExtra + '">' + etiqueta + "</div>",
+      iconSize: [34, 34],
+      iconAnchor: [anchorX, 17]
+    });
+
     const m = L.marker([loc.lat, loc.lng], { icon, zIndexOffset: 1000 }).addTo(localesLayer);
     const box = document.createElement("div");
-    box.innerHTML = "<b>SÃO " + esc(loc.nombre) + "</b><br>" + esc(loc.direccion) + "<br>";
-    const b = document.createElement("button");
-    b.className = "popup-btn";
-    b.textContent = "Ver postulantes cerca";
-    b.addEventListener("click", () => { $("mapCercaFilter").value = loc.id; cardsLimit = MAX_CARDS; renderMapa(); m.closePopup(); });
-    box.appendChild(b);
+    const titulo = loc.tipo === "local" ? "SÃO " + loc.nombre : loc.nombre;
+    box.innerHTML = "<b>" + esc(titulo) + "</b><br>" + esc(loc.direccion) + "<br>";
+
+    // Botón 1: Por cercanía en el mapa (limpia el filtro de sede elegida)
+    const bCerca = document.createElement("button");
+    bCerca.className = "popup-btn";
+    bCerca.textContent = "📍 Viven cerca (< 3 km)";
+    bCerca.addEventListener("click", () => {
+      $("mapLocalFilter").value = "todos";
+      $("mapCercaFilter").value = loc.id;
+      $("mapRadioFilter").value = "3";
+      cardsLimit = MAX_CARDS;
+      renderMapa();
+      m.closePopup();
+    });
+    box.appendChild(bCerca);
+
+    // Botón 2: Por elección en el formulario (limpia el filtro de distancia)
+    const bEligieron = document.createElement("button");
+    bEligieron.className = "popup-btn";
+    bEligieron.style.marginLeft = "4px";
+    bEligieron.textContent = loc.tipo === "fabrica"
+      ? "🏭 Postulados a Producción"
+      : (loc.tipo === "logistica" ? "🚚 Postulados a Logística" : "🏪 Eligieron este local");
+    bEligieron.addEventListener("click", () => {
+      $("mapCercaFilter").value = "ninguno";
+      $("mapLocalFilter").value = loc.id;
+      cardsLimit = MAX_CARDS;
+      renderMapa();
+      m.closePopup();
+    });
+    box.appendChild(bEligieron);
+
     m.bindPopup(box);
   });
 }
@@ -697,26 +897,28 @@ function poblarSelectores() {
       s.appendChild(o);
     });
   };
-  llenar("mapLocalFilter", '<option value="todos">Eligieron cualquier sucursal</option>');
+  llenar("mapLocalFilter", '<option value="todos">Eligieron cualquier sede/sucursal</option>');
   llenar("mapCercaFilter", '<option value="ninguno">— sin filtro de distancia —</option>');
-  llenar("pipelineLocal", '<option value="todos">Todas las sucursales</option>');
+  llenar("pipelineLocal", '<option value="todos">Todas las sedes/sucursales</option>');
 
   const newLoc = $("newLocal");
   if (newLoc) {
-    newLoc.innerHTML = '<option value="Cualquiera">Cualquiera / Sin preferencia</option>';
+    newLoc.innerHTML = '<option value="">Sin preferencia</option>';
     locs.forEach(l => {
       const o = document.createElement("option");
-      o.value = l.nombre;
-      o.textContent = l.nombre;
+      o.value = l.formLabel || l.nombre;
+      o.textContent = l.nombre + " (" + l.direccion + ")";
       newLoc.appendChild(o);
     });
   }
 
-  const e = $("mapExpFilter");
-  if (e) {
-    e.innerHTML = '<option value="todas">Cualquier experiencia</option>' +
-      Object.keys(NOMBRE_EXP).map(k => '<option value="' + k + '">' + NOMBRE_EXP[k] + "</option>").join("");
-  }
+  ["mapExpFilter", "localDetalleExp"].forEach(id => {
+    const e = $(id);
+    if (e) {
+      e.innerHTML = '<option value="todas">Cualquier experiencia</option>' +
+        Object.keys(NOMBRE_EXP).map(k => '<option value="' + k + '">' + NOMBRE_EXP[k] + "</option>").join("");
+    }
+  });
 }
 
 function poblarPuestos() {
@@ -848,7 +1050,7 @@ function renderMapa() {
       (p.posts.length > 1 ? '<span class="badge badge-repetido">×' + p.posts.length + "</span>" : "") +
       (p._dist != null ? '<span class="badge badge-dist">' + p._dist.toFixed(1) + " km</span>" : "") + "</span></div>" +
       '<div class="cv-card-info">📍 <b>Domicilio:</b> ' + esc(p.dir || "No indicado") + (ubicacion(p) ? "" : " <i>(sin ubicar)</i>") +
-      "<br>🎯 " + esc(p.puesto || SECTORES[p.sector]) + "<br>🏪 <b>Preferencia:</b> " + esc(locTxt) +
+      "<br>🎯 " + esc(p.puesto || SECTORES[p.sector]) + "<br>🏪 <b>Sede / Local:</b> " + esc(locTxt) +
       "<br>📅 " + fmtFecha(p.lastTs) + "</div>";
     card.addEventListener("click", () => abrirModal(p.id));
     cont.appendChild(card);
@@ -921,6 +1123,159 @@ function initKanbanDrop() {
       const p = porId.get(id);
       if (p && p.estado !== estado) setEstado(id, estado);
     });
+  });
+}
+
+// ---------------------------------------------------------------- pestaña sucursales, fábricas y logística
+function renderLocalesTab() {
+  const grid = $("localesCardsGrid");
+  if (!grid) return;
+  const zona = $("localesZonaFilter") ? $("localesZonaFilter").value : "todas";
+  const tipo = $("localesTipoFilter") ? $("localesTipoFilter").value : "todos";
+  const q = sinTildes($("localesSearchInput") ? $("localesSearchInput").value : "");
+  const activos = personas.filter(p => ESTADOS_ACTIVOS.includes(p.estado));
+
+  const lista = LOCALES_SAO
+    .filter(l =>
+      (zona === "todas" || l.zona === zona) &&
+      (tipo === "todos" || l.tipo === tipo) &&
+      (!q || sinTildes(l.nombre + " " + l.direccion).includes(q))
+    )
+    .sort((a, b) => (a.tipo === b.tipo ? a.nombre.localeCompare(b.nombre) : (a.tipo === "local" ? 1 : -1)));
+
+  grid.innerHTML = "";
+  lista.forEach(loc => {
+    const eligieron = activos.filter(p => p.localesIds.includes(loc.id));
+    const cerca = activos.filter(p => {
+      const u = ubicacion(p);
+      return u && distanciaKm(u.lat, u.lng, loc.lat, loc.lng) <= 3;
+    });
+
+    const icono = loc.tipo === "fabrica" ? "🏭 " : (loc.tipo === "logistica" ? "🚚 " : "🏪 SÃO ");
+    const card = document.createElement("div");
+    card.className = "cv-card-item";
+    card.style.cursor = "pointer";
+    card.style.borderColor = (localSeleccionadoId === loc.id) ? "#d4a373" : "";
+    card.innerHTML =
+      '<div class="cv-card-top"><span class="cv-card-title">' + icono + esc(loc.nombre) + '</span>' +
+      '<span class="badge badge-gris">' + (loc.zona === "bsas" ? "BA / AMBA" : "MDP / Costa") + '</span></div>' +
+      '<div class="cv-card-info" style="margin-top:6px;">📍 ' + esc(loc.direccion) +
+      '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">' +
+      '<span class="badge badge-Entrevista">' + eligieron.length + ' postulantes</span>' +
+      '<span class="badge badge-Recomendado">' + cerca.length + ' a &lt; 3 km</span>' +
+      '</div></div>';
+    card.addEventListener("click", () => abrirDetalleLocal(loc.id));
+    grid.appendChild(card);
+  });
+
+  if (localSeleccionadoId) renderDetalleLocal();
+}
+
+function abrirDetalleLocal(locId) {
+  localSeleccionadoId = locId;
+  renderLocalesTab();
+  const panel = $("localDetallePanel");
+  if (panel) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function cerrarDetalleLocal() {
+  localSeleccionadoId = null;
+  if ($("localDetallePanel")) $("localDetallePanel").style.display = "none";
+  renderLocalesTab();
+}
+
+function limpiarFiltrosDetalleLocal() {
+  if ($("localDetalleModo")) $("localDetalleModo").value = "eligieron";
+  if ($("localDetalleEstado")) $("localDetalleEstado").value = "activos";
+  if ($("localDetalleExp")) $("localDetalleExp").value = "todas";
+  if ($("localDetalleB1")) $("localDetalleB1").value = "todos";
+  if ($("localDetalleEdadMin")) $("localDetalleEdadMin").value = "";
+  if ($("localDetalleEdadMax")) $("localDetalleEdadMax").value = "";
+  if ($("localDetalleFechaDesde")) $("localDetalleFechaDesde").value = "";
+  if ($("localDetalleFechaHasta")) $("localDetalleFechaHasta").value = "";
+  renderDetalleLocal();
+}
+
+function renderDetalleLocal() {
+  const panel = $("localDetallePanel");
+  const loc = LOCALES_SAO.find(l => l.id === localSeleccionadoId);
+  if (!panel || !loc) return;
+
+  panel.style.display = "block";
+  const prefijo = loc.tipo === "local" ? "SÃO " : "";
+  $("localDetalleTitulo").textContent = prefijo + loc.nombre;
+  $("localDetalleDir").textContent = loc.direccion;
+
+  const modo = $("localDetalleModo") ? $("localDetalleModo").value : "eligieron";
+  const estadoFiltro = $("localDetalleEstado") ? $("localDetalleEstado").value : "activos";
+  const expFiltro = $("localDetalleExp") ? $("localDetalleExp").value : "todas";
+  const b1Filtro = $("localDetalleB1") ? sinTildes($("localDetalleB1").value) : "todos";
+  const edadMin = parseInt($("localDetalleEdadMin") ? $("localDetalleEdadMin").value : "", 10) || 0;
+  const edadMax = parseInt($("localDetalleEdadMax") ? $("localDetalleEdadMax").value : "", 10) || 0;
+  const fechaDesde = $("localDetalleFechaDesde") ? $("localDetalleFechaDesde").value : "";
+  const fechaHasta = $("localDetalleFechaHasta") ? $("localDetalleFechaHasta").value : "";
+
+  const base = personas.filter(p => {
+    if (estadoFiltro === "activos") {
+      if (!ESTADOS_ACTIVOS.includes(p.estado)) return false;
+    } else if (estadoFiltro !== "todos" && p.estado !== estadoFiltro) {
+      return false;
+    }
+    if (expFiltro !== "todas" && p.exp !== expFiltro) return false;
+    if (b1Filtro !== "todos" && p.b1 !== b1Filtro) return false;
+    if (edadMin && (p.edad == null || p.edad < edadMin)) return false;
+    if (edadMax && (p.edad == null || p.edad > edadMax)) return false;
+    if (fechaDesde) {
+      const dDesde = new Date(fechaDesde + "T00:00:00");
+      if (!p.lastTs || p.lastTs < dDesde) return false;
+    }
+    if (fechaHasta) {
+      const dHasta = new Date(fechaHasta + "T23:59:59");
+      if (!p.lastTs || p.lastTs > dHasta) return false;
+    }
+    return true;
+  });
+
+  let candidatos = [];
+  if (modo === "cerca") {
+    candidatos = base
+      .map(p => {
+        const u = ubicacion(p);
+        return u ? { p, dist: distanciaKm(u.lat, u.lng, loc.lat, loc.lng) } : null;
+      })
+      .filter(x => x && x.dist <= 3)
+      .sort((a, b) => a.dist - b.dist)
+      .map(x => ({ ...x.p, _distLocal: x.dist }));
+  } else {
+    candidatos = base
+      .filter(p => p.localesIds.includes(loc.id))
+      .sort((a, b) => b.lastTs - a.lastTs);
+  }
+
+  if ($("localDetalleCount")) $("localDetalleCount").textContent = candidatos.length + " postulantes";
+
+  const cont = $("localDetalleLista");
+  cont.innerHTML = "";
+  if (!candidatos.length) {
+    cont.innerHTML = '<div class="cards-empty">No hay postulantes con esos filtros para esta sede.</div>';
+    return;
+  }
+
+  candidatos.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "cv-card-item";
+    card.innerHTML =
+      '<div class="cv-card-top"><span class="cv-card-title">' + esc(p.nombre) + '</span><span>' +
+      '<span class="badge badge-' + p.estado + '">' + esc(NOMBRE_ESTADO[p.estado]) + '</span>' +
+      (p.b1 === "si" ? '<span class="badge badge-Contratado">🚚 B1</span>' : '') +
+      (p.posts.length > 1 ? '<span class="badge badge-repetido">×' + p.posts.length + '</span>' : '') +
+      (p._distLocal != null ? '<span class="badge badge-dist">' + p._distLocal.toFixed(1) + ' km</span>' : '') +
+      '</span></div>' +
+      '<div class="cv-card-info">📍 ' + esc(p.dir || "Sin domicilio") +
+      '<br>🎯 ' + esc(p.puesto || SECTORES[p.sector]) + (p.edad ? ' · ' + p.edad + ' años' : '') +
+      '<br>📅 ' + fmtFecha(p.lastTs) + '</div>';
+    card.addEventListener("click", () => abrirModal(p.id));
+    cont.appendChild(card);
   });
 }
 
@@ -1016,8 +1371,9 @@ function abrirModal(id) {
   set("modalPuesto", p.puesto);
   set("modalEstudios", sinTildes(p.estudia) === "si" ? "Sí — " + [p.dondeEst, p.carrera].filter(Boolean).join(" · ") : (p.estudia || ""));
   set("modalTrabajo", sinTildes(p.trabaja) === "si" ? "Sí — " + (p.dondeTrab || "") : (p.trabaja || ""));
-  set("modalExp", NOMBRE_EXP[p.exp] + (p.notas ? " — " + p.notas : ""));
-  if ($("modalB1Row")) $("modalB1Row").style.display = p.sector === "logistica" ? "block" : "none";
+  const expTexto = [p.expForm, NOMBRE_EXP[p.exp], p.notas].filter(Boolean).join(" — ");
+  set("modalExp", expTexto);
+  if ($("modalB1Row")) $("modalB1Row").style.display = (p.sector === "logistica" || p.b1 === "si") ? "block" : "none";
   set("modalB1", p.b1 === "si" ? "Sí" : "No indicado");
 
   const cv = $("modalCvLinks");
@@ -1088,6 +1444,7 @@ function renderTodo() {
   const activa = document.querySelector(".view-screen.active");
   const id = activa ? activa.id : "pantalla-mapa";
   if (id === "pantalla-mapa") renderMapa();
+  else if (id === "pantalla-locales") renderLocalesTab();
   else if (id === "pantalla-pipeline") renderPipeline();
   else if (id === "pantalla-kpis") renderKpis();
   else if (id === "pantalla-descartados") renderDescartados();
@@ -1128,10 +1485,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("mapSearchInput")) $("mapSearchInput").addEventListener("input", () => { clearTimeout(deb); deb = setTimeout(redibujar, 250); });
   ["mapAreaFilter", "mapCercaFilter", "mapRadioFilter", "mapPuestoFilter", "mapExpFilter", "mapEstudiaFilter", "mapTrabajaFilter",
     "mapB1Filter", "mapFechaDesde", "mapFechaHasta", "mapEdadMin", "mapEdadMax", "mapUbicFilter"].forEach(i => { if ($(i)) $(i).addEventListener("change", redibujar); });
-  
+
   if ($("mapZonaFilter")) {
-    $("mapZonaFilter").addEventListener("change", () => {
-      if (mapInstance) mapInstance.flyTo([-38.0055, -57.555], 12);
+    $("mapZonaFilter").addEventListener("change", e => {
+      if (mapInstance) {
+        if (e.target.value === "bsas") mapInstance.flyTo([-34.6037, -58.43], 10);
+        else mapInstance.flyTo([-38.0055, -57.555], 12);
+      }
       redibujar();
     });
   }
@@ -1139,7 +1499,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("mapLocalFilter")) {
     $("mapLocalFilter").addEventListener("change", e => {
       const loc = LOCALES_SAO.find(l => l.id === e.target.value);
-      if (loc && mapInstance) mapInstance.flyTo([loc.lat, loc.lng], 13);
+      if (loc && mapInstance) mapInstance.flyTo([loc.lat, loc.lng], 14);
       redibujar();
     });
   }
@@ -1171,6 +1531,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       toast("Filtros limpiados");
     });
   }
+
+  if ($("localesZonaFilter")) $("localesZonaFilter").addEventListener("change", renderLocalesTab);
+  if ($("localesTipoFilter")) $("localesTipoFilter").addEventListener("change", renderLocalesTab);
+  if ($("localesSearchInput")) $("localesSearchInput").addEventListener("input", renderLocalesTab);
+  ["localDetalleModo", "localDetalleEstado", "localDetalleExp", "localDetalleB1", "localDetalleEdadMin", "localDetalleEdadMax",
+    "localDetalleFechaDesde", "localDetalleFechaHasta"].forEach(id => {
+    if ($(id)) $(id).addEventListener("change", renderDetalleLocal);
+  });
 
   if ($("pipelineSearch")) $("pipelineSearch").addEventListener("input", renderPipeline);
   ["pipelineArea", "pipelineLocal"].forEach(i => { if ($(i)) $(i).addEventListener("change", renderPipeline); });

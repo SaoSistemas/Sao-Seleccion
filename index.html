@@ -32,7 +32,8 @@
     </div>
 
     <div class="nav-tabs">
-      <button class="nav-btn active" onclick="cambiarPantalla('pantalla-mapa')">📍 Mapa y Sucursales</button>
+      <button class="nav-btn active" onclick="cambiarPantalla('pantalla-mapa')">📍 Mapa</button>
+      <button class="nav-btn" onclick="cambiarPantalla('pantalla-locales')">🏪 Sucursales</button>
       <button class="nav-btn" onclick="cambiarPantalla('pantalla-pipeline')">📋 Pipeline</button>
       <button class="nav-btn" onclick="cambiarPantalla('pantalla-kpis')">📊 Métricas</button>
       <button class="nav-btn" onclick="cambiarPantalla('pantalla-descartados')">⚠️ No gustaron / Historial</button>
@@ -98,12 +99,12 @@
           </div>
 
           <select id="mapLocalFilter" title="Postulantes que eligieron este local">
-            <option value="todos">Eligieron cualquier sucursal</option>
+            <option value="todos">Eligieron cualquier sede/sucursal</option>
           </select>
 
           <!-- Búsqueda por cercanía -->
           <div class="near-box">
-            <label>📏 Vecinos cercanos a un local</label>
+            <label>📏 Vecinos cercanos a una sede/local</label>
             <div class="grid-2">
               <select id="mapCercaFilter">
                 <option value="ninguno">— sin filtro de distancia —</option>
@@ -184,7 +185,106 @@
       </div>
     </section>
 
-    <!-- PANTALLA 2: PIPELINE KANBAN -->
+    <!-- PANTALLA 2: SUCURSALES, FÁBRICAS Y LOGÍSTICA EN FICHAS -->
+    <section id="pantalla-locales" class="view-screen" style="overflow-y:auto;">
+      <div class="dashboard-content">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+          <div>
+            <h2 style="margin:0;">Sucursales, Fábricas y Logística</h2>
+            <p style="font-size:0.82rem; color:var(--text-dim); margin-top:4px;">Abrí una sede para ver y filtrar los postulantes que la eligieron o viven cerca.</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <select id="localesTipoFilter" style="min-width:170px;">
+              <option value="todos">Todas las sedes</option>
+              <option value="local">🏪 Solo Locales</option>
+              <option value="fabrica">🏭 Fábricas</option>
+              <option value="logistica">🚚 Logística</option>
+            </select>
+            <select id="localesZonaFilter" style="min-width:210px;">
+              <option value="todas">Todas las zonas (MDP, Costa y BA)</option>
+              <option value="mdp">Mar del Plata y Costa</option>
+              <option value="bsas">Buenos Aires (CABA, GBA, Zárate, LP)</option>
+            </select>
+            <input type="text" id="localesSearchInput" placeholder="Buscar sede..." style="min-width:200px;">
+          </div>
+        </div>
+
+        <!-- Grilla de fichas -->
+        <div id="localesCardsGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px;"></div>
+
+        <!-- Panel desplegable de la sede seleccionada -->
+        <div id="localDetallePanel" style="display:none; margin-top:22px; background:#1c1c1c; border:1px solid #333; border-radius:8px; padding:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid #2e2e2e; padding-bottom:12px; margin-bottom:14px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <h3 id="localDetalleTitulo" style="margin:0;">SÃO</h3>
+                <span id="localDetalleCount" class="counter-badge">0 postulantes</span>
+              </div>
+              <small id="localDetalleDir" style="color:var(--text-dim);"></small>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button class="btn-reset-prominent" onclick="limpiarFiltrosDetalleLocal()">✕ Limpiar filtros</button>
+              <button class="btn-upload btn-mini" onclick="cerrarDetalleLocal()">✕ Cerrar</button>
+            </div>
+          </div>
+
+          <!-- Barra de filtros propia de la sede -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:16px; background:#151515; padding:12px; border-radius:6px; border:1px solid #292929;">
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:3px;">Criterio:</label>
+              <select id="localDetalleModo">
+                <option value="eligieron">Eligieron esta sede</option>
+                <option value="cerca">Viven a menos de 3 km</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:3px;">Estado:</label>
+              <select id="localDetalleEstado">
+                <option value="activos">Solo activos</option>
+                <option value="Recomendado">⭐ Recomendados</option>
+                <option value="Pendiente">Pendientes</option>
+                <option value="Entrevista">En entrevista</option>
+                <option value="Contratado">✅ Contratados</option>
+                <option value="todos">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:3px;">Experiencia:</label>
+              <select id="localDetalleExp">
+                <option value="todas">Cualquier experiencia</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:3px;">Licencia B1:</label>
+              <select id="localDetalleB1">
+                <option value="todos">Indistinto</option>
+                <option value="si">Sí tiene B1</option>
+                <option value="no">No / Sin indicar</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:3px;">Edad (mín / máx):</label>
+              <div class="grid-2">
+                <input type="number" id="localDetalleEdadMin" placeholder="Mín." min="14" max="80">
+                <input type="number" id="localDetalleEdadMax" placeholder="Máx." min="14" max="80">
+              </div>
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:3px;">Postulado desde:</label>
+              <input type="date" id="localDetalleFechaDesde">
+            </div>
+            <div>
+              <label style="font-size:0.7rem; color:var(--text-dim); display:block; margin-bottom:3px;">Postulado hasta:</label>
+              <input type="date" id="localDetalleFechaHasta">
+            </div>
+          </div>
+
+          <div id="localDetalleLista" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:10px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PANTALLA 3: PIPELINE KANBAN -->
     <section id="pantalla-pipeline" class="view-screen">
       <div class="pipeline-header">
         <h2>Pipeline General de Selección</h2>
@@ -197,7 +297,7 @@
             <option value="logistica">Logística</option>
           </select>
           <select id="pipelineLocal">
-            <option value="todos">Todas las sucursales</option>
+            <option value="todos">Todas las sedes/sucursales</option>
           </select>
         </div>
       </div>
@@ -223,7 +323,7 @@
       </div>
     </section>
 
-    <!-- PANTALLA 3: DASHBOARD KPIS -->
+    <!-- PANTALLA 4: DASHBOARD KPIS -->
     <section id="pantalla-kpis" class="view-screen">
       <div class="dashboard-content">
         <h2>Métricas de Reclutamiento SÃO</h2>
@@ -251,9 +351,9 @@
             </table>
           </div>
           <div class="table-container">
-            <div class="table-header"><h3>Locales más elegidos (postulantes activos)</h3></div>
+            <div class="table-header"><h3>Sedes y locales más elegidos (postulantes activos)</h3></div>
             <table class="styled-table">
-              <thead><tr><th>Local</th><th>Postulantes activos</th></tr></thead>
+              <thead><tr><th>Sede / Local</th><th>Postulantes activos</th></tr></thead>
               <tbody id="kpiLocalesBody"></tbody>
             </table>
           </div>
@@ -261,7 +361,7 @@
       </div>
     </section>
 
-    <!-- PANTALLA 4: HISTORIAL DE DESCARTADOS -->
+    <!-- PANTALLA 5: HISTORIAL DE DESCARTADOS -->
     <section id="pantalla-descartados" class="view-screen">
       <div class="table-container">
         <div class="table-header">
@@ -312,28 +412,63 @@
             <label class="form-lbl">Correo electrónico</label>
             <input type="email" id="newEmail" placeholder="Opcional">
 
-            <label class="form-lbl">Domicilio (Calle y altura en MDP) *</label>
+            <label class="form-lbl">Domicilio (Calle y altura) *</label>
             <input type="text" id="newDir" required placeholder="Ej: Av. Colón 2500">
 
             <label class="form-lbl">Fecha de nacimiento</label>
             <input type="date" id="newNac">
+
+            <label class="form-lbl">Zona / Desde dónde se contacta *</label>
+            <select id="newZona">
+              <option value="Mar del Plata y Costa Atlantica">Mar del Plata y Costa Atlántica</option>
+              <option value="AMBA y La Plata">AMBA y La Plata</option>
+              <option value="Zarate">Zárate</option>
+            </select>
           </div>
 
           <div class="modal-col">
-            <label class="form-lbl">Sector *</label>
-            <select id="newSector">
-              <option value="Locales">Locales</option>
-              <option value="Producción">Producción</option>
-              <option value="Logística">Logística</option>
+            <label class="form-lbl">Buscas sumarte a nuestro equipo de *</label>
+            <select id="newSector" onchange="actualizarCamposNuevoPostulante()">
+              <option value="Atención en Locales">Atención en Locales</option>
+              <option value="Producción en fábrica">Producción en fábrica</option>
+              <option value="Logistica">Logística</option>
             </select>
 
-            <label class="form-lbl">Puesto de interés</label>
-            <input type="text" id="newPuesto" placeholder="Ej: Cafetería / Cajero / Referido">
+            <label class="form-lbl">Puesto de interés *</label>
+            <select id="newPuesto">
+              <option value="Atención al publico en local">Atención al público en local</option>
+              <option value="Primer Empleo en local">Primer Empleo en local</option>
+              <option value="Encargado Turno del local">Encargado Turno del local</option>
+              <option value="Gerente de Local">Gerente de Local</option>
+              <option value="Pasteleria, Panadería, Sandwicheria">Producción (Pastelería / Panadería / Sandwichería)</option>
+              <option value="Picking/Armado de Pedidos">Logística (Picking / Armado de Pedidos)</option>
+              <option value="Encargado">Logística (Encargado)</option>
+            </select>
 
-            <label class="form-lbl">Sucursal de preferencia</label>
+            <label class="form-lbl">Sucursal / Fábrica / Logística de preferencia</label>
             <select id="newLocal">
-              <option value="Cualquiera">Cualquiera</option>
+              <option value="">Sin preferencia</option>
             </select>
+
+            <div class="grid-2">
+              <div>
+                <label class="form-lbl">Experiencia previa</label>
+                <select id="newExperiencia">
+                  <option value="Primer Empleo">Primer Empleo</option>
+                  <option value="Menos de 1 año">Menos de 1 año</option>
+                  <option value="Entre 1 y 3 años">Entre 1 y 3 años</option>
+                  <option value="Entre 3 y 5 años">Entre 3 y 5 años</option>
+                  <option value="Mas de 5 años">Más de 5 años</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-lbl">¿Cuenta con Licencia B1?</label>
+                <select id="newLicenciaB1">
+                  <option value="No">No / Sin indicar</option>
+                  <option value="Sí">Sí (Licencia B1)</option>
+                </select>
+              </div>
+            </div>
 
             <label class="form-lbl">CV en PDF o Imagen (Opcional)</label>
             <input type="file" id="newCvFile" accept=".pdf,.doc,.docx,image/*" style="padding: 5px; font-size: 0.78rem;">
@@ -345,14 +480,14 @@
               <option value="Entrevista">En Entrevista</option>
             </select>
 
-            <label class="form-lbl">Nota / Quién lo refiere</label>
-            <textarea id="newNota" rows="2" placeholder="Ej: Referido por encargado de Alem, tiene experiencia..."></textarea>
+            <label class="form-lbl">Nota interna RRHH / Quién lo refiere</label>
+            <textarea id="newNota" rows="2" placeholder="Se guarda como nota interna de selección..."></textarea>
           </div>
         </form>
       </div>
 
       <div class="modal-footer">
-        <span style="font-size:0.75rem; color:var(--text-dim);">* Campos obligatorios para ubicar en mapa</span>
+        <span style="font-size:0.75rem; color:var(--text-dim);">Campos obligatorios para ubicar en mapa</span>
         <div class="modal-buttons">
           <button type="button" class="btn-upload" onclick="cerrarModalNuevo()">Cancelar</button>
           <button type="submit" form="formNuevoPostulante" class="btn-save" id="btnGuardarNuevo">Guardar postulante</button>
@@ -381,7 +516,7 @@
             <p><strong>📞 Teléfono:</strong> <span id="modalTel">-</span></p>
             <p><strong>✉️ Correo:</strong> <span id="modalEmail">-</span></p>
             <p><strong>🎂 Edad:</strong> <span id="modalNac">-</span></p>
-            <p><strong>🏪 Locales elegidos:</strong> <span id="modalLocal">-</span></p>
+            <p><strong>🏪 Sede / Locales elegidos:</strong> <span id="modalLocal">-</span></p>
             <p><strong>🎯 Puesto de interés:</strong> <span id="modalPuesto">-</span></p>
           </div>
           <div class="modal-col">
