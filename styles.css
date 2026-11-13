@@ -207,7 +207,6 @@ input, select, textarea {
   width: 100%;
   outline: none;
 }
-input[type="date"] { color-scheme: dark; }
 input:focus, select:focus, textarea:focus { border-color: var(--primary-gold); }
 
 .quick-status-chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 2px 0; }
@@ -397,3 +396,5 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary-gold); }
   .kpi-tables { grid-template-columns: 1fr; }
   .table-container { overflow-x: auto; }
 }
+
+input[type="date"] { color-scheme: dark; }
