@@ -1,10 +1,11 @@
 // =====================================================================================
-// SÃO — Portal de Selección y RRHH (app.js) · v6.2 (Mapeo completo A..DK + Sedes Alfar/San Isidro)
+// SÃO — Portal de Selección y RRHH (app.js) · v6.3 (Roles Gerentes/RRHH + Fix Fecha)
 // =====================================================================================
 
 const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbwFcUa9cSwV8E1IxVXuvXTolnWlQK0Y-Uw5RuXpLb39qOTTk5a3JnU1rdX89DiJncaDFA/exec";
 const TOKEN_STORAGE_KEY = "sao_auth_token_v1";
 let tokenActual = "";
+let rolActual = "gerente";
 
 const AUTOSYNC_INTERVALO_MS = 30 * 1000;
 const CHUNK = 1500;
@@ -118,7 +119,6 @@ function parseFecha(s) {
   // 2. Formato ISO YYYY-MM-DD (evita el desfase UTC-3 de new Date("YYYY-MM-DD"))
   const mIso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if (mIso) {
-    // Si termina en Z y tiene hora (ej. objeto Date serializado desde Apps Script), se respeta la conversión
     if (/Z$/i.test(str) && mIso[4] != null) {
       const dUtc = new Date(str);
       return isNaN(dUtc) ? null : dUtc;
@@ -176,10 +176,18 @@ async function apiPost(action, items) {
   return j;
 }
 
-// ---------------------------------------------------------------- seguridad / login
+// ---------------------------------------------------------------- seguridad / login y permisos
+function aplicarPermisosUI() {
+  const btnNuevo = document.querySelector('button[onclick="abrirModalNuevo()"]');
+  if (btnNuevo) {
+    btnNuevo.style.display = (rolActual === "admin") ? "inline-flex" : "none";
+  }
+}
+
 function cerrarSesion() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   tokenActual = "";
+  rolActual = "gerente";
   if (syncTimer) clearInterval(syncTimer);
   location.reload();
 }
@@ -196,13 +204,16 @@ async function intentarLogin(claveIngresada) {
 
   tokenActual = cleanKey;
   try {
-    await apiGet("estados");
+    const auth = await apiGet("auth");
+    rolActual = (auth && auth.rol) || "gerente";
     localStorage.setItem(TOKEN_STORAGE_KEY, tokenActual);
     const overlay = $("loginOverlay");
     if (overlay) overlay.style.setProperty("display", "none", "important");
+    aplicarPermisosUI();
     iniciarAppAutenticada();
   } catch (e) {
     tokenActual = "";
+    rolActual = "gerente";
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     errEl.textContent = e.message.includes("No autorizado") ? "Clave incorrecta." : ("Error: " + e.message);
     errEl.style.display = "block";
@@ -250,7 +261,7 @@ function initSidebarResizer() {
   });
 }
 
-// ---------------------------------------------------------------- carga manual de postulante
+// ---------------------------------------------------------------- carga manual de postulante (solo RRHH / Admin)
 function actualizarCamposNuevoPostulante() {
   const sec = $("newSector") ? $("newSector").value : "";
   const puesto = $("newPuesto");
@@ -276,6 +287,10 @@ function actualizarCamposNuevoPostulante() {
 }
 
 function abrirModalNuevo() {
+  if (rolActual !== "admin") {
+    toast("Solo RRHH o Sistemas pueden cargar postulantes manualmente.", true);
+    return;
+  }
   const form = $("formNuevoPostulante");
   if (form) form.reset();
   actualizarCamposNuevoPostulante();
@@ -285,6 +300,10 @@ function abrirModalNuevo() {
 
 async function guardarNuevoPostulante(e) {
   e.preventDefault();
+  if (rolActual !== "admin") {
+    toast("No tenés permisos para realizar esta acción.", true);
+    return;
+  }
   const btn = $("btnGuardarNuevo");
   btn.disabled = true;
   btn.textContent = "Guardando...";
