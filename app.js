@@ -2,7 +2,7 @@
 // SÃO — Portal de Selección y RRHH (app.js) · v6.3 (Roles Gerentes/RRHH + Fix Fecha)
 // =====================================================================================
 
-const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbwFcUa9cSwV8E1IxVXuvXTolnWlQK0Y-Uw5RuXpLb39qOTTk5a3JnU1rdX89DiJncaDFA/exec";
+const WEBAPP_BASE = "https://script.google.com/macros/s/AKfycbwHPydrAHrXj4m2z-kBJRe0PQzkQ3gsfzRvVIKl_FR09tKCeoP5M0HDGhui6kkqJMOi/exec";
 const TOKEN_STORAGE_KEY = "sao_auth_token_v1";
 let tokenActual = "";
 let rolActual = "gerente";
@@ -11,6 +11,9 @@ const AUTOSYNC_INTERVALO_MS = 30 * 1000;
 const CHUNK = 1500;
 const MAX_CARDS = 100;
 const PEND_KEY = "sao_pend_v1";
+const GEO_CUOTA_KEY = "sao_geo_cuota_v1";
+const GEO_PAUSA_MS = 60 * 60 * 1000; // si se agota la cuota de Google, se reintenta recién pasada 1 hora
+let geoPausaHasta = (function () { try { return parseInt(localStorage.getItem(GEO_CUOTA_KEY) || "0", 10) || 0; } catch (e) { return 0; } })();
 
 const ESTADOS_ACTIVOS = ["Pendiente", "Recomendado", "Entrevista"];
 const NOMBRE_ESTADO = { Pendiente: "Pendiente", Recomendado: "Recomendado", Entrevista: "Entrevista", NoGusto: "No gustó", Contratado: "Contratado", Rechazado: "Rechazado" };
@@ -484,8 +487,16 @@ function claveGeo(dir, gz, contacto) {
 // ---------------------------------------------------------------- geocodificación (vía Google Apps Script)
 async function geocodificarPendientes() {
   if (geoCorriendo) return;
+
+  // Si la cuota diaria de Google se agotó hace poco, no insistir hasta que pase la pausa
+  if (Date.now() < geoPausaHasta) {
+    setCarga("⏸️ Cuota diaria de Google agotada. Se reintenta automáticamente después de las " +
+      new Date(geoPausaHasta).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) + ".");
+    return;
+  }
+
   geoCorriendo = true;
-  let errores = 0, hechos = 0;
+  let errores = 0, hechos = 0, cuotaAgotada = false;
   try {
     const vistos = new Set();
     const cola = personas
@@ -507,7 +518,7 @@ async function geocodificarPendientes() {
           ciudad = ", Buenos Aires, Argentina";
         } else if (p.geoZona === "bsas") {
           if (c.includes("zarate") && !d.includes("zarate")) ciudad = ", Zárate, Buenos Aires, Argentina";
-          else if ((/\b(calle\s*\d+|\d+\s*(n|entre|y)\s*\d+)\b/.test(d) || c.includes("la plata")) && !RE_BSAS.test(d)) ciudad = ", La Plata, Buenos Aires, Argentina";
+          else if (/\b(calle\s*\d+|\d+\s*(n|entre|y)\s*\d+)\b/.test(d) && !RE_BSAS.test(d)) ciudad = ", La Plata, Buenos Aires, Argentina";
           else ciudad = ", Buenos Aires, Argentina";
         }
         return { key: p.geoKey, gz: p.geoZona, query: base + ciudad };
@@ -515,14 +526,29 @@ async function geocodificarPendientes() {
 
       try {
         const resLote = await apiPost("geocodificar_lote", payload);
-        if (Array.isArray(resLote)) {
-          resLote.forEach(r => {
-            geoCache[r.key] = (r.lat != null && r.lng != null)
-              ? { lat: r.lat, lng: r.lng, tipo: r.tipo || "OK" }
-              : { lat: null, lng: null, tipo: "NO" };
-            hechos++;
-          });
+        const lista = Array.isArray(resLote) ? resLote : ((resLote && resLote.resultados) || []);
+        lista.forEach(r => {
+          geoCache[r.key] = (r.lat != null && r.lng != null)
+            ? { lat: r.lat, lng: r.lng, tipo: r.tipo || "OK" }
+            : { lat: null, lng: null, tipo: "NO" };
+          hechos++;
+        });
+
+        if (resLote && resLote.cuotaAgotada) {
+          // Google cortó por cuota: se frena todo y se retoma más tarde (las no procesadas quedan pendientes)
+          cuotaAgotada = true;
+          geoPausaHasta = Date.now() + GEO_PAUSA_MS;
+          try { localStorage.setItem(GEO_CUOTA_KEY, String(geoPausaHasta)); } catch (e) {}
+          setCarga("⏸️ Cuota diaria de Google agotada. Se reintenta automáticamente después de las " +
+            new Date(geoPausaHasta).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) + ".");
+          renderTodo();
+          break;
         }
+
+        // Las que el servidor no devolvió (error técnico) no se reintentan en esta sesión
+        const devueltas = new Set(lista.map(r => r.key));
+        bloque.forEach(p => { if (!devueltas.has(p.geoKey)) geoFallos.add(p.geoKey); });
+
         errores = 0;
         renderTodo();
       } catch (err) {
@@ -536,7 +562,7 @@ async function geocodificarPendientes() {
     }
   } finally {
     geoCorriendo = false;
-    if (errores < 3) setCarga("");
+    if (errores < 3 && !cuotaAgotada) setCarga("");
     if (hechos > 0) renderTodo();
   }
 }
