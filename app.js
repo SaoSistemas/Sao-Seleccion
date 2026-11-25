@@ -43,6 +43,7 @@ const LOCALES_SAO = [
   { id: "olavarria", nombre: "Olavarría", tipo: "local", formLabel: "Alvarado esq. Olavarría", zona: "mdp", direccion: "Olavarría 3002", lat: -38.0160937, lng: -57.5433462, pat: /olavarria/ },
   { id: "aldrey", nombre: "Aldrey", tipo: "local", formLabel: "Paseo Aldrey", zona: "mdp", direccion: "Sarmiento 2646 (Paseo Aldrey)", lat: -38.0122446, lng: -57.5428786, pat: /aldrey/ },
   { id: "bendu", nombre: "Bendu", tipo: "local", formLabel: "Bendu", zona: "mdp", direccion: "Av. de los Trabajadores 150", lat: -38.0424496, lng: -57.5427405, pat: /bendu/ },
+  { id: "senderos", nombre: "Senderos", tipo: "local", formLabel: "Sao Senderos - Av. Jorge Newbery 4650", zona: "mdp", direccion: "Av. Jorge Newbery 4650 (Distrito Comercial Senderos), Mar del Plata", lat: -38.077703, lng: -57.581507, pat: /senderos|newbery 4650/ },
 
   // Locales Buenos Aires (CABA, GBA, Zárate y La Plata)
   { id: "san_isidro", nombre: "San Isidro", tipo: "local", formLabel: "Sao San Isidro - Av. del Libertador 14643. San Isidro", zona: "bsas", direccion: "Av. del Libertador 14643, San Isidro", lat: -34.47735, lng: -58.50165, pat: /san isidro|libertador 14643/ },
@@ -53,7 +54,8 @@ const LOCALES_SAO = [
   { id: "belgrano", nombre: "Belgrano", tipo: "local", formLabel: "Sao Belgrano - Av. Juramento 2527", zona: "bsas", direccion: "Av. Juramento 2527, Belgrano, CABA", lat: -34.56215, lng: -58.45865, pat: /belgrano|juramento 2527/ },
   { id: "la_plata", nombre: "La Plata", tipo: "local", formLabel: "Sao La Plata - Calle 11 1051", zona: "bsas", direccion: "Calle 11 1051, La Plata", lat: -34.91825, lng: -57.95315, pat: /la plata|calle 11 1051/ },
   { id: "madero", nombre: "Madero", tipo: "local", formLabel: "Sao Madero - Pierina Dealessi & Boulevard Rosario Vera Peñaloza", zona: "bsas", direccion: "Pierina Dealessi y Blvd. Rosario Vera Peñaloza, Puerto Madero, CABA", lat: -34.61885, lng: -58.36245, pat: /madero|dealessi|penaloza/ },
-  { id: "palmas_del_pilar", nombre: "Palmas del Pilar", tipo: "local", formLabel: "Sao Palmas del Pilar - Las Magnolias 757", zona: "bsas", direccion: "Las Magnolias 757 (Palmas del Pilar), Pilar", lat: -34.44815, lng: -58.87125, pat: /pilar|magnolias 757/ }
+  { id: "palmas_del_pilar", nombre: "Palmas del Pilar", tipo: "local", formLabel: "Sao Palmas del Pilar - Las Magnolias 757", zona: "bsas", direccion: "Las Magnolias 757 (Palmas del Pilar), Pilar", lat: -34.44815, lng: -58.87125, pat: /pilar|magnolias 757/ },
+    { id: "caballito", nombre: "Caballito", tipo: "local", formLabel: "Sao Caballito - Juan Bautista Alberdi 902", zona: "bsas", direccion: "Juan Bautista Alberdi 902, Caballito, CABA", lat: -34.62294896907457, lng: -58.4410912332943, pat: /caballito|alberdi 902/ }
 ];
 
 // ---------------------------------------------------------------- estado global
